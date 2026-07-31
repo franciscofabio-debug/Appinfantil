@@ -1,42 +1,2336 @@
-function salvarHistorico() {
-    try {
-        localStorage.setItem(
-            chaveHistorico(),
-            JSON.stringify(historico)
-        );
-    } catch (erro) {
-        /*
-         * Mesmo que o armazenamento do navegador fique cheio,
-         * a conversa continua funcionando durante a sessão atual.
-         */
-        console.warn(
-            "Não foi possível salvar todo o histórico no navegador.",
-            erro
-        );
-    }
-}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
 
-function juntarHistoricos(novosItens) {
-    if (!Array.isArray(novosItens)) {
-        return;
-    }
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1"
+    >
 
-    const mapa = new Map();
+    <meta name="theme-color" content="#ff77b7">
 
-    [...historico, ...novosItens].forEach((mensagem) => {
-        if (mensagem?.id) {
-            mapa.set(mensagem.id, mensagem);
+    <title>Nosso Cantinho Mágico</title>
+
+    <style>
+        :root {
+            --rosa: #ff77b7;
+            --rosa-claro: #ffe2f0;
+            --roxo: #8068df;
+            --verde: #c9f5d6;
+            --azul: #e4f8ff;
+            --amarelo: #fff1a6;
+            --texto: #5d4772;
+            --vermelho: #dc5573;
         }
-    });
 
-    /*
-     * Não existe mais o slice(-LIMITE_HISTORICO).
-     * Todas as mensagens permanecem no histórico.
-     */
-    historico = Array.from(mapa.values()).sort(
-        (a, b) => a.criadoEm - b.criadoEm
-    );
+        * {
+            box-sizing: border-box;
+        }
 
-    salvarHistorico();
-    desenharHistorico();
-}
+        body {
+            min-height: 100vh;
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            color: var(--texto);
+            background:
+                radial-gradient(
+                    circle at 15% 10%,
+                    #fff5a8 0 5%,
+                    transparent 6%
+                ),
+                radial-gradient(
+                    circle at 85% 15%,
+                    #ffcce5 0 6%,
+                    transparent 7%
+                ),
+                linear-gradient(135deg, #c9f5ff, #ffe3f1);
+        }
+
+        button,
+        input {
+            font: inherit;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
+        }
+
+        .app {
+            width: min(100%, 560px);
+            min-height: 100vh;
+            margin: auto;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.95);
+            overflow: hidden;
+            box-shadow: 0 0 35px rgba(81, 50, 110, 0.25);
+        }
+
+        header {
+            padding: 17px;
+            color: white;
+            text-align: center;
+            background: linear-gradient(135deg, var(--rosa), #aa7cff);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        header p {
+            margin: 6px 0 0;
+            font-size: 13px;
+        }
+
+        #status {
+            min-height: 39px;
+            padding: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            background: var(--amarelo);
+        }
+
+        .tela {
+            flex: 1;
+            min-height: 0;
+            padding: 22px;
+        }
+
+        .escondido {
+            display: none !important;
+        }
+
+        .cartao {
+            max-width: 440px;
+            margin: 0 auto 16px;
+            padding: 20px;
+            text-align: center;
+            background: white;
+            border-radius: 25px;
+            box-shadow: 0 6px 18px rgba(81, 50, 110, 0.15);
+        }
+
+        .cartao h2 {
+            margin-top: 0;
+        }
+
+        .escolhas {
+            display: grid;
+            gap: 14px;
+        }
+
+        .escolha {
+            padding: 18px;
+            color: var(--texto);
+            font-size: 18px;
+            font-weight: bold;
+            border: 0;
+            border-radius: 20px;
+        }
+
+        .adulto {
+            background: var(--verde);
+        }
+
+        .crianca {
+            background: var(--rosa-claro);
+        }
+
+        input {
+            width: 100%;
+            margin: 6px 0 12px;
+            padding: 13px;
+            color: var(--texto);
+            background: white;
+            border: 3px solid #e5d8fa;
+            border-radius: 17px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--roxo);
+        }
+
+        .principal,
+        .secundario,
+        .perigo {
+            padding: 12px 16px;
+            font-weight: bold;
+            border: 0;
+            border-radius: 17px;
+        }
+
+        .principal {
+            color: white;
+            background: var(--roxo);
+        }
+
+        .secundario {
+            color: var(--texto);
+            background: var(--amarelo);
+        }
+
+        .perigo {
+            color: white;
+            background: var(--vermelho);
+        }
+
+        .botoes {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 9px;
+            margin-top: 12px;
+        }
+
+        .codigo {
+            margin: 14px 0;
+            padding: 16px;
+            color: var(--roxo);
+            font-size: clamp(23px, 7vw, 35px);
+            font-weight: bold;
+            letter-spacing: 2px;
+            overflow-wrap: anywhere;
+            background: var(--amarelo);
+            border: 3px dashed #d5b946;
+            border-radius: 18px;
+        }
+
+        #chat {
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .barra-chat {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 9px 11px;
+            background: var(--rosa-claro);
+        }
+
+        .dados-chat {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .dados-chat strong,
+        .dados-chat small {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .dados-chat small {
+            margin-top: 3px;
+        }
+
+        .barra-chat button {
+            flex: 0 0 auto;
+            padding: 7px 9px;
+            border: 0;
+            border-radius: 11px;
+        }
+
+        #reconectar {
+            color: var(--texto);
+            background: var(--amarelo);
+        }
+
+        #sair {
+            color: white;
+            background: var(--vermelho);
+        }
+
+        #mensagens {
+            flex: 1;
+            min-height: 280px;
+            padding: 13px;
+            overflow-y: auto;
+            background:
+                radial-gradient(
+                    circle at 20% 20%,
+                    white 0 2%,
+                    transparent 3%
+                ),
+                radial-gradient(
+                    circle at 80% 35%,
+                    #fff3ad 0 2%,
+                    transparent 3%
+                ),
+                var(--azul);
+        }
+
+        #mais-antigas {
+            display: block;
+            margin: 0 auto 13px;
+            padding: 8px 13px;
+            color: var(--texto);
+            font-size: 13px;
+            font-weight: bold;
+            background: white;
+            border: 2px solid #decdf5;
+            border-radius: 14px;
+        }
+
+        .aviso {
+            max-width: 390px;
+            margin: 0 auto 18px;
+            padding: 12px;
+            line-height: 1.5;
+            text-align: center;
+            background: white;
+            border-radius: 20px;
+        }
+
+        .mensagem {
+            width: fit-content;
+            max-width: 82%;
+            margin: 9px 0;
+            padding: 10px 14px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 3px 8px rgba(63, 46, 78, 0.13);
+            animation: aparecer 0.2s ease;
+        }
+
+        .mensagem.minha {
+            margin-left: auto;
+            background: var(--verde);
+            border-bottom-right-radius: 5px;
+        }
+
+        .mensagem.outra {
+            margin-right: auto;
+            border-bottom-left-radius: 5px;
+        }
+
+        .mensagem strong {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        .mensagem .texto {
+            font-size: 18px;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+        }
+
+        .mensagem time {
+            display: block;
+            margin-top: 5px;
+            font-size: 10px;
+            text-align: right;
+            opacity: 0.65;
+        }
+
+        .emojis {
+            display: flex;
+            gap: 7px;
+            padding: 8px;
+            overflow-x: auto;
+            background: white;
+        }
+
+        .emojis button {
+            flex: 0 0 auto;
+            padding: 8px 11px;
+            font-size: 23px;
+            background: var(--amarelo);
+            border: 0;
+            border-radius: 14px;
+        }
+
+        #formulario {
+            display: flex;
+            gap: 8px;
+            padding: 10px;
+            background: white;
+        }
+
+        #formulario input {
+            flex: 1;
+            min-width: 0;
+            margin: 0;
+        }
+
+        #botao-enviar {
+            min-width: 57px;
+            color: white;
+            font-size: 24px;
+            background: var(--roxo);
+            border: 0;
+            border-radius: 18px;
+        }
+
+        @keyframes aparecer {
+            from {
+                opacity: 0;
+                transform: translateY(8px) scale(0.97);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @media (min-width: 600px) {
+            body {
+                padding: 20px;
+            }
+
+            .app {
+                min-height: calc(100vh - 40px);
+                max-height: 880px;
+                border-radius: 28px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="app">
+        <header>
+            <h1>🌈 Nosso Cantinho Mágico</h1>
+            <p>Um espaço especial para duas pessoas ✨</p>
+        </header>
+
+        <div id="status">🟡 Escolha este celular</div>
+
+        <section id="inicio" class="tela">
+            <div class="cartao">
+                <h2>Quem usará este celular?</h2>
+
+                <div class="escolhas">
+                    <button
+                        id="escolher-adulto"
+                        class="escolha adulto"
+                        type="button"
+                    >
+                        🦁 Papai ou Mamãe
+                    </button>
+
+                    <button
+                        id="escolher-crianca"
+                        class="escolha crianca"
+                        type="button"
+                    >
+                        🦄 Criança
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="config-adulto" class="tela escondido">
+            <div class="cartao">
+                <h2>🦁 Celular do adulto</h2>
+
+                <label for="nome-adulto">Seu nome</label>
+
+                <input
+                    id="nome-adulto"
+                    maxlength="25"
+                    value="Papai ou Mamãe"
+                >
+
+                <button
+                    id="criar-sala"
+                    class="principal"
+                    type="button"
+                >
+                    Criar nosso cantinho
+                </button>
+
+                <div class="botoes">
+                    <button
+                        class="secundario voltar"
+                        type="button"
+                    >
+                        Voltar
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="espera-adulto" class="tela escondido">
+            <div class="cartao">
+                <h2>⭐ Código da criança</h2>
+
+                <p>Digite este código no celular da criança:</p>
+
+                <div id="codigo-exibido" class="codigo"></div>
+
+                <p>Aguardando o segundo celular entrar…</p>
+
+                <div class="botoes">
+                    <button
+                        id="copiar-codigo"
+                        class="principal"
+                        type="button"
+                    >
+                        Copiar código
+                    </button>
+
+                    <button
+                        id="compartilhar-codigo"
+                        class="secundario"
+                        type="button"
+                    >
+                        Compartilhar
+                    </button>
+
+                    <button
+                        id="novo-codigo"
+                        class="secundario"
+                        type="button"
+                    >
+                        Novo código
+                    </button>
+
+                    <button
+                        class="perigo reiniciar"
+                        type="button"
+                    >
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="config-crianca" class="tela escondido">
+            <div class="cartao">
+                <h2>🦄 Celular da criança</h2>
+
+                <label for="nome-crianca">Nome da criança</label>
+
+                <input
+                    id="nome-crianca"
+                    maxlength="25"
+                    value="Minha estrelinha"
+                >
+
+                <label for="codigo-crianca">
+                    Código do adulto
+                </label>
+
+                <input
+                    id="codigo-crianca"
+                    maxlength="14"
+                    placeholder="ABCD-EFGH-IJKL"
+                    autocomplete="off"
+                    autocapitalize="characters"
+                >
+
+                <button
+                    id="entrar-sala"
+                    class="principal"
+                    type="button"
+                >
+                    Entrar no cantinho
+                </button>
+
+                <div class="botoes">
+                    <button
+                        class="secundario voltar"
+                        type="button"
+                    >
+                        Voltar
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="chat" class="tela escondido">
+            <div class="barra-chat">
+                <div class="dados-chat">
+                    <strong id="companheiro">
+                        💞 Conectando…
+                    </strong>
+
+                    <small id="codigo-mini"></small>
+                </div>
+
+                <button
+                    id="reconectar"
+                    class="escondido"
+                    type="button"
+                >
+                    Reconectar
+                </button>
+
+                <button id="sair" type="button">
+                    Sair
+                </button>
+            </div>
+
+            <div id="mensagens" aria-live="polite">
+                <button
+                    id="mais-antigas"
+                    class="escondido"
+                    type="button"
+                >
+                    ↑ Carregar mensagens antigas
+                </button>
+
+                <div id="lista-mensagens"></div>
+            </div>
+
+            <div id="emojis" class="emojis">
+                <button type="button">❤️</button>
+                <button type="button">🥰</button>
+                <button type="button">🌈</button>
+                <button type="button">🦄</button>
+                <button type="button">⭐</button>
+                <button type="button">😂</button>
+                <button type="button">👏</button>
+                <button type="button">🎉</button>
+                <button type="button">😘</button>
+            </div>
+
+            <form id="formulario">
+                <input
+                    id="texto"
+                    maxlength="250"
+                    autocomplete="off"
+                    placeholder="Escreva uma mensagem..."
+                    aria-label="Mensagem"
+                >
+
+                <button
+                    id="botao-enviar"
+                    type="submit"
+                    aria-label="Enviar"
+                    disabled
+                >
+                    ➤
+                </button>
+            </form>
+        </section>
+    </main>
+
+    <script>
+        "use strict";
+
+        (() => {
+            const TELAS = [
+                "inicio",
+                "config-adulto",
+                "espera-adulto",
+                "config-crianca",
+                "chat"
+            ];
+
+            const TAMANHO_PAGINA = 100;
+            const QUANTIDADE_SINCRONIZADA = 300;
+            const TAMANHO_LOTE_REDE = 25;
+
+            const NOME_BANCO = "cantinho-magico-banco-v2";
+            const NOME_TABELA = "mensagens";
+            const NOME_INDICE = "sala_criadoEm";
+
+            const CHAVE_CODIGO_ADULTO =
+                "cantinho-codigo-adulto-v2";
+
+            const CHAVE_ULTIMO_CODIGO =
+                "cantinho-ultimo-codigo-v2";
+
+            const CHAVE_NOME_ADULTO =
+                "cantinho-nome-adulto-v2";
+
+            const CHAVE_NOME_CRIANCA =
+                "cantinho-nome-crianca-v2";
+
+            const ALFABETO =
+                "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+            const $ = (id) => document.getElementById(id);
+
+            const status = $("status");
+            const mensagensElemento = $("mensagens");
+            const listaMensagens = $("lista-mensagens");
+            const botaoMaisAntigas = $("mais-antigas");
+            const campoTexto = $("texto");
+            const botaoEnviar = $("botao-enviar");
+            const companheiro = $("companheiro");
+            const codigoMini = $("codigo-mini");
+
+            let banco = null;
+            let peer = null;
+            let conexao = null;
+
+            let perfil = "";
+            let meuNome = "";
+            let nomeCompanheiro = "";
+            let codigoSala = "";
+
+            let conectado = false;
+            let vagaOcupada = false;
+            let primeiraMensagemCarregada = null;
+            let temporizadorAtualizacao = null;
+            let geracao = 0;
+
+            const mensagensMemoria = new Map();
+            const mensagensRenderizadas = new Set();
+            const migracoesRealizadas = new Set();
+
+            function mostrarTela(id) {
+                TELAS.forEach((tela) => {
+                    $(tela).classList.toggle(
+                        "escondido",
+                        tela !== id
+                    );
+                });
+            }
+
+            function atualizarStatus(
+                texto,
+                cor = "#fff1a6"
+            ) {
+                status.textContent = texto;
+                status.style.background = cor;
+            }
+
+            function mostrarReconectar(mostrar) {
+                $("reconectar").classList.toggle(
+                    "escondido",
+                    !mostrar
+                );
+            }
+
+            function limparCodigo(codigo) {
+                return String(codigo || "")
+                    .toUpperCase()
+                    .replace(/[^A-Z2-9]/g, "")
+                    .slice(0, 12);
+            }
+
+            function formatarCodigo(codigo) {
+                const limpo = limparCodigo(codigo);
+
+                return limpo.match(/.{1,4}/g)?.join("-") || "";
+            }
+
+            function gerarCodigo() {
+                const numeros = new Uint8Array(12);
+
+                crypto.getRandomValues(numeros);
+
+                return Array.from(
+                    numeros,
+                    (numero) => {
+                        return ALFABETO[
+                            numero % ALFABETO.length
+                        ];
+                    }
+                ).join("");
+            }
+
+            function idDaSala(codigo) {
+                return (
+                    "cantinho-" +
+                    limparCodigo(codigo).toLowerCase()
+                );
+            }
+
+            function gerarIdMensagem() {
+                if (
+                    typeof crypto.randomUUID === "function"
+                ) {
+                    return crypto.randomUUID();
+                }
+
+                return (
+                    Date.now() +
+                    "-" +
+                    Math.random().toString(16).slice(2)
+                );
+            }
+
+            function esperar(milissegundos) {
+                return new Promise((resolve) => {
+                    setTimeout(resolve, milissegundos);
+                });
+            }
+
+            function carregarScript(endereco) {
+                return new Promise((resolve, reject) => {
+                    const script =
+                        document.createElement("script");
+
+                    script.src = endereco;
+                    script.async = true;
+
+                    script.onload = resolve;
+
+                    script.onerror = () => {
+                        script.remove();
+
+                        reject(
+                            new Error(
+                                "Falha ao carregar " +
+                                endereco
+                            )
+                        );
+                    };
+
+                    document.head.appendChild(script);
+                });
+            }
+
+            async function garantirPeerJS() {
+                if (window.Peer) {
+                    return;
+                }
+
+                const enderecos = [
+                    "https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js",
+                    "https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"
+                ];
+
+                let ultimoErro = null;
+
+                for (const endereco of enderecos) {
+                    try {
+                        await carregarScript(endereco);
+
+                        if (window.Peer) {
+                            return;
+                        }
+                    } catch (erro) {
+                        ultimoErro = erro;
+                    }
+                }
+
+                throw (
+                    ultimoErro ||
+                    new Error(
+                        "A biblioteca de conexão não abriu."
+                    )
+                );
+            }
+
+            function abrirBanco() {
+                return new Promise((resolve, reject) => {
+                    const requisicao = indexedDB.open(
+                        NOME_BANCO,
+                        1
+                    );
+
+                    requisicao.onupgradeneeded = () => {
+                        const bancoAtual =
+                            requisicao.result;
+
+                        let tabela;
+
+                        if (
+                            !bancoAtual.objectStoreNames
+                                .contains(NOME_TABELA)
+                        ) {
+                            tabela =
+                                bancoAtual.createObjectStore(
+                                    NOME_TABELA,
+                                    {
+                                        keyPath: "id"
+                                    }
+                                );
+                        } else {
+                            tabela =
+                                requisicao.transaction
+                                    .objectStore(
+                                        NOME_TABELA
+                                    );
+                        }
+
+                        if (
+                            !tabela.indexNames.contains(
+                                NOME_INDICE
+                            )
+                        ) {
+                            tabela.createIndex(
+                                NOME_INDICE,
+                                ["sala", "criadoEm"],
+                                {
+                                    unique: false
+                                }
+                            );
+                        }
+                    };
+
+                    requisicao.onsuccess = () => {
+                        resolve(requisicao.result);
+                    };
+
+                    requisicao.onerror = () => {
+                        reject(
+                            requisicao.error ||
+                            new Error(
+                                "Não foi possível abrir o banco."
+                            )
+                        );
+                    };
+                });
+            }
+
+            async function iniciarArmazenamento() {
+                if (!("indexedDB" in window)) {
+                    console.warn(
+                        "IndexedDB não está disponível."
+                    );
+
+                    return;
+                }
+
+                try {
+                    banco = await abrirBanco();
+                } catch (erro) {
+                    banco = null;
+
+                    console.error(
+                        "Falha ao abrir o IndexedDB.",
+                        erro
+                    );
+                }
+
+                try {
+                    await navigator.storage?.persist?.();
+                } catch (erro) {
+                    console.warn(
+                        "Persistência não concedida.",
+                        erro
+                    );
+                }
+            }
+
+            async function salvarMensagens(itens) {
+                const unicos = new Map();
+
+                itens.forEach((mensagem) => {
+                    if (mensagem?.id) {
+                        unicos.set(
+                            mensagem.id,
+                            mensagem
+                        );
+
+                        mensagensMemoria.set(
+                            mensagem.id,
+                            mensagem
+                        );
+                    }
+                });
+
+                const mensagens = Array.from(
+                    unicos.values()
+                );
+
+                if (
+                    mensagens.length === 0 ||
+                    !banco
+                ) {
+                    return;
+                }
+
+                try {
+                    await new Promise(
+                        (resolve, reject) => {
+                            const transacao =
+                                banco.transaction(
+                                    NOME_TABELA,
+                                    "readwrite"
+                                );
+
+                            const tabela =
+                                transacao.objectStore(
+                                    NOME_TABELA
+                                );
+
+                            mensagens.forEach(
+                                (mensagem) => {
+                                    tabela.put(mensagem);
+                                }
+                            );
+
+                            transacao.oncomplete =
+                                resolve;
+
+                            transacao.onabort = () => {
+                                reject(
+                                    transacao.error ||
+                                    new Error(
+                                        "Gravação cancelada."
+                                    )
+                                );
+                            };
+
+                            transacao.onerror = () => {
+                                /*
+                                 * O evento onabort concluirá
+                                 * a rejeição da Promise.
+                                 */
+                            };
+                        }
+                    );
+                } catch (erro) {
+                    console.error(
+                        "Não foi possível salvar mensagens.",
+                        erro
+                    );
+
+                    atualizarStatus(
+                        "⚠️ O navegador não conseguiu salvar o histórico, mas a conversa continua.",
+                        "#ffe0a8"
+                    );
+                }
+            }
+
+            function buscarNaMemoria(
+                sala,
+                limite,
+                antesDe = null
+            ) {
+                return Array.from(
+                    mensagensMemoria.values()
+                )
+                    .filter((mensagem) => {
+                        return (
+                            mensagem.sala === sala &&
+                            (
+                                antesDe === null ||
+                                mensagem.criadoEm < antesDe
+                            )
+                        );
+                    })
+                    .sort((a, b) => {
+                        return b.criadoEm - a.criadoEm;
+                    })
+                    .slice(0, limite)
+                    .reverse();
+            }
+
+            async function buscarMensagens(
+                sala,
+                limite,
+                antesDe = null
+            ) {
+                if (!banco) {
+                    return buscarNaMemoria(
+                        sala,
+                        limite,
+                        antesDe
+                    );
+                }
+
+                try {
+                    return await new Promise(
+                        (resolve, reject) => {
+                            const transacao =
+                                banco.transaction(
+                                    NOME_TABELA,
+                                    "readonly"
+                                );
+
+                            const tabela =
+                                transacao.objectStore(
+                                    NOME_TABELA
+                                );
+
+                            const indice =
+                                tabela.index(
+                                    NOME_INDICE
+                                );
+
+                            const limiteSuperior =
+                                antesDe === null
+                                    ? Number.MAX_SAFE_INTEGER
+                                    : antesDe;
+
+                            const intervalo =
+                                IDBKeyRange.bound(
+                                    [sala, 0],
+                                    [
+                                        sala,
+                                        limiteSuperior
+                                    ],
+                                    false,
+                                    antesDe !== null
+                                );
+
+                            const requisicao =
+                                indice.openCursor(
+                                    intervalo,
+                                    "prev"
+                                );
+
+                            const resultado = [];
+
+                            requisicao.onsuccess =
+                                () => {
+                                    const cursor =
+                                        requisicao.result;
+
+                                    if (
+                                        !cursor ||
+                                        resultado.length >=
+                                            limite
+                                    ) {
+                                        resolve(
+                                            resultado.reverse()
+                                        );
+
+                                        return;
+                                    }
+
+                                    resultado.push(
+                                        cursor.value
+                                    );
+
+                                    cursor.continue();
+                                };
+
+                            requisicao.onerror =
+                                () => {
+                                    reject(
+                                        requisicao.error
+                                    );
+                                };
+                        }
+                    );
+                } catch (erro) {
+                    console.error(
+                        "Erro ao consultar mensagens.",
+                        erro
+                    );
+
+                    return buscarNaMemoria(
+                        sala,
+                        limite,
+                        antesDe
+                    );
+                }
+            }
+
+            function normalizarMensagem(dados) {
+                if (
+                    !dados ||
+                    typeof dados !== "object"
+                ) {
+                    return null;
+                }
+
+                if (
+                    !["adulto", "crianca"].includes(
+                        dados.perfil
+                    )
+                ) {
+                    return null;
+                }
+
+                const texto = String(
+                    dados.texto || ""
+                )
+                    .trim()
+                    .slice(0, 250);
+
+                if (!texto) {
+                    return null;
+                }
+
+                const criadoEm =
+                    Number(dados.criadoEm) ||
+                    Date.now();
+
+                return {
+                    id: String(
+                        dados.id ||
+                        gerarIdMensagem()
+                    ).slice(0, 120),
+
+                    sala: codigoSala,
+
+                    perfil: dados.perfil,
+
+                    nome: String(
+                        dados.nome || "Pessoa"
+                    ).slice(0, 25),
+
+                    texto,
+
+                    criadoEm
+                };
+            }
+
+            async function migrarHistoricoAntigo() {
+                const codigo = limparCodigo(
+                    codigoSala
+                );
+
+                if (
+                    !codigo ||
+                    migracoesRealizadas.has(codigo)
+                ) {
+                    return;
+                }
+
+                migracoesRealizadas.add(codigo);
+
+                const chaveAntiga =
+                    `cantinho-historico-${codigo}`;
+
+                const dadosAntigos =
+                    localStorage.getItem(
+                        chaveAntiga
+                    );
+
+                if (!dadosAntigos) {
+                    return;
+                }
+
+                try {
+                    const lista =
+                        JSON.parse(dadosAntigos);
+
+                    if (!Array.isArray(lista)) {
+                        return;
+                    }
+
+                    const mensagens = lista
+                        .map(normalizarMensagem)
+                        .filter(Boolean);
+
+                    await salvarMensagens(mensagens);
+
+                    localStorage.removeItem(
+                        chaveAntiga
+                    );
+                } catch (erro) {
+                    console.warn(
+                        "O histórico antigo não foi importado.",
+                        erro
+                    );
+                }
+            }
+
+            function criarBalao(mensagem) {
+                const caixa =
+                    document.createElement("article");
+
+                const autor =
+                    document.createElement("strong");
+
+                const texto =
+                    document.createElement("div");
+
+                const horario =
+                    document.createElement("time");
+
+                caixa.className =
+                    mensagem.perfil === perfil
+                        ? "mensagem minha"
+                        : "mensagem outra";
+
+                caixa.dataset.id = mensagem.id;
+
+                autor.textContent =
+                    mensagem.perfil === "adulto"
+                        ? `🦁 ${mensagem.nome}`
+                        : `🦄 ${mensagem.nome}`;
+
+                texto.className = "texto";
+                texto.textContent = mensagem.texto;
+
+                horario.textContent =
+                    new Date(
+                        mensagem.criadoEm
+                    ).toLocaleTimeString(
+                        "pt-BR",
+                        {
+                            hour: "2-digit",
+                            minute: "2-digit"
+                        }
+                    );
+
+                caixa.append(
+                    autor,
+                    texto,
+                    horario
+                );
+
+                return caixa;
+            }
+
+            function mostrarAvisoSemMensagens() {
+                if (
+                    listaMensagens.children.length > 0
+                ) {
+                    return;
+                }
+
+                const aviso =
+                    document.createElement("div");
+
+                aviso.id = "aviso-sem-mensagens";
+                aviso.className = "aviso";
+
+                aviso.textContent =
+                    "⭐ Vocês estão juntinhos! Envie uma mensagem. ⭐";
+
+                listaMensagens.appendChild(aviso);
+            }
+
+            function removerAvisoSemMensagens() {
+                $("aviso-sem-mensagens")?.remove();
+            }
+
+            function adicionarMensagemNaTela(
+                mensagem,
+                rolar = true
+            ) {
+                if (
+                    mensagensRenderizadas.has(
+                        mensagem.id
+                    )
+                ) {
+                    return;
+                }
+
+                const estavaNoFinal =
+                    mensagensElemento.scrollHeight -
+                    mensagensElemento.scrollTop -
+                    mensagensElemento.clientHeight <
+                    90;
+
+                removerAvisoSemMensagens();
+
+                listaMensagens.appendChild(
+                    criarBalao(mensagem)
+                );
+
+                mensagensRenderizadas.add(
+                    mensagem.id
+                );
+
+                if (
+                    rolar &&
+                    estavaNoFinal
+                ) {
+                    mensagensElemento.scrollTop =
+                        mensagensElemento.scrollHeight;
+                }
+            }
+
+            async function carregarPaginaInicial(
+                rolarAoFinal = true
+            ) {
+                const estavaNoFinal =
+                    mensagensElemento.scrollHeight -
+                    mensagensElemento.scrollTop -
+                    mensagensElemento.clientHeight <
+                    90;
+
+                const mensagens =
+                    await buscarMensagens(
+                        codigoSala,
+                        TAMANHO_PAGINA
+                    );
+
+                listaMensagens.innerHTML = "";
+                mensagensRenderizadas.clear();
+
+                mensagens.forEach((mensagem) => {
+                    listaMensagens.appendChild(
+                        criarBalao(mensagem)
+                    );
+
+                    mensagensRenderizadas.add(
+                        mensagem.id
+                    );
+                });
+
+                primeiraMensagemCarregada =
+                    mensagens[0]?.criadoEm ||
+                    null;
+
+                botaoMaisAntigas.classList.toggle(
+                    "escondido",
+                    mensagens.length <
+                        TAMANHO_PAGINA
+                );
+
+                mostrarAvisoSemMensagens();
+
+                if (
+                    rolarAoFinal ||
+                    estavaNoFinal
+                ) {
+                    requestAnimationFrame(() => {
+                        mensagensElemento.scrollTop =
+                            mensagensElemento
+                                .scrollHeight;
+                    });
+                }
+            }
+
+            async function carregarMensagensAntigas() {
+                if (
+                    primeiraMensagemCarregada === null
+                ) {
+                    return;
+                }
+
+                botaoMaisAntigas.disabled = true;
+
+                const alturaAnterior =
+                    mensagensElemento.scrollHeight;
+
+                const mensagens =
+                    await buscarMensagens(
+                        codigoSala,
+                        TAMANHO_PAGINA,
+                        primeiraMensagemCarregada
+                    );
+
+                if (mensagens.length === 0) {
+                    botaoMaisAntigas.classList.add(
+                        "escondido"
+                    );
+
+                    botaoMaisAntigas.disabled = false;
+
+                    return;
+                }
+
+                const fragmento =
+                    document.createDocumentFragment();
+
+                mensagens.forEach((mensagem) => {
+                    if (
+                        mensagensRenderizadas.has(
+                            mensagem.id
+                        )
+                    ) {
+                        return;
+                    }
+
+                    fragmento.appendChild(
+                        criarBalao(mensagem)
+                    );
+
+                    mensagensRenderizadas.add(
+                        mensagem.id
+                    );
+                });
+
+                listaMensagens.prepend(fragmento);
+
+                primeiraMensagemCarregada =
+                    mensagens[0].criadoEm;
+
+                if (
+                    mensagens.length <
+                    TAMANHO_PAGINA
+                ) {
+                    botaoMaisAntigas.classList.add(
+                        "escondido"
+                    );
+                }
+
+                requestAnimationFrame(() => {
+                    const novaAltura =
+                        mensagensElemento.scrollHeight;
+
+                    mensagensElemento.scrollTop +=
+                        novaAltura -
+                        alturaAnterior;
+                });
+
+                botaoMaisAntigas.disabled = false;
+            }
+
+            function agendarAtualizacaoHistorico() {
+                clearTimeout(
+                    temporizadorAtualizacao
+                );
+
+                temporizadorAtualizacao =
+                    setTimeout(() => {
+                        void carregarPaginaInicial(
+                            false
+                        );
+                    }, 250);
+            }
+
+            function enviarPelaRede(dados) {
+                if (
+                    !conexao ||
+                    !conexao.open
+                ) {
+                    return false;
+                }
+
+                try {
+                    conexao.send(dados);
+                    return true;
+                } catch (erro) {
+                    console.error(
+                        "Erro ao enviar pela conexão.",
+                        erro
+                    );
+
+                    return false;
+                }
+            }
+
+            async function sincronizarRecentes() {
+                const conexaoAtual = conexao;
+
+                const recentes =
+                    await buscarMensagens(
+                        codigoSala,
+                        QUANTIDADE_SINCRONIZADA
+                    );
+
+                for (
+                    let inicio = 0;
+                    inicio < recentes.length;
+                    inicio += TAMANHO_LOTE_REDE
+                ) {
+                    if (
+                        conexao !== conexaoAtual ||
+                        !conexaoAtual.open
+                    ) {
+                        return;
+                    }
+
+                    conexaoAtual.send({
+                        tipo: "historico",
+                        mensagens: recentes.slice(
+                            inicio,
+                            inicio +
+                                TAMANHO_LOTE_REDE
+                        )
+                    });
+
+                    await esperar(35);
+                }
+            }
+
+            async function receberDados(dados) {
+                if (
+                    !dados ||
+                    typeof dados !== "object"
+                ) {
+                    return;
+                }
+
+                if (dados.tipo === "ocupado") {
+                    conectado = false;
+
+                    atualizarStatus(
+                        "🔴 Este cantinho já está sendo usado por dois celulares.",
+                        "#ffd4dd"
+                    );
+
+                    mostrarReconectar(false);
+                    conexao?.close();
+
+                    return;
+                }
+
+                if (
+                    dados.tipo === "apresentacao"
+                ) {
+                    nomeCompanheiro = String(
+                        dados.nome || "Pessoa"
+                    ).slice(0, 25);
+
+                    companheiro.textContent =
+                        `💞 Conversando com ${nomeCompanheiro}`;
+
+                    return;
+                }
+
+                if (
+                    dados.tipo === "mensagem"
+                ) {
+                    const mensagem =
+                        normalizarMensagem(
+                            dados.mensagem
+                        );
+
+                    if (!mensagem) {
+                        return;
+                    }
+
+                    await salvarMensagens([
+                        mensagem
+                    ]);
+
+                    adicionarMensagemNaTela(
+                        mensagem
+                    );
+
+                    return;
+                }
+
+                if (
+                    dados.tipo === "historico" &&
+                    Array.isArray(
+                        dados.mensagens
+                    )
+                ) {
+                    const mensagens =
+                        dados.mensagens
+                            .map(
+                                normalizarMensagem
+                            )
+                            .filter(Boolean);
+
+                    await salvarMensagens(
+                        mensagens
+                    );
+
+                    agendarAtualizacaoHistorico();
+                }
+            }
+
+            async function quandoConectar(
+                token
+            ) {
+                if (token !== geracao) {
+                    return;
+                }
+
+                conectado = true;
+
+                atualizarStatus(
+                    "🟢 Os dois celulares estão conectados!",
+                    "#c9f5d6"
+                );
+
+                mostrarReconectar(false);
+                botaoEnviar.disabled = false;
+
+                await migrarHistoricoAntigo();
+                await carregarPaginaInicial();
+
+                mostrarTela("chat");
+
+                codigoMini.textContent =
+                    perfil === "adulto"
+                        ? `Código: ${formatarCodigo(codigoSala)}`
+                        : "Conversa particular";
+
+                enviarPelaRede({
+                    tipo: "apresentacao",
+                    nome: meuNome,
+                    perfil
+                });
+
+                void sincronizarRecentes();
+            }
+
+            function configurarConexao(
+                novaConexao,
+                token
+            ) {
+                conexao = novaConexao;
+                vagaOcupada = true;
+
+                novaConexao.on("open", () => {
+                    void quandoConectar(token);
+                });
+
+                novaConexao.on("data", (dados) => {
+                    if (token === geracao) {
+                        void receberDados(dados);
+                    }
+                });
+
+                novaConexao.on("error", (erro) => {
+                    if (token !== geracao) {
+                        return;
+                    }
+
+                    console.error(
+                        "Erro na conexão.",
+                        erro
+                    );
+
+                    atualizarStatus(
+                        "🔴 A conexão entre os celulares falhou.",
+                        "#ffd4dd"
+                    );
+                });
+
+                novaConexao.on("close", () => {
+                    if (
+                        token !== geracao ||
+                        conexao !== novaConexao
+                    ) {
+                        return;
+                    }
+
+                    conexao = null;
+                    conectado = false;
+                    vagaOcupada = false;
+                    botaoEnviar.disabled = true;
+
+                    atualizarStatus(
+                        perfil === "adulto"
+                            ? "🟡 Aguardando o celular da criança entrar novamente…"
+                            : "🟡 A conexão caiu. Toque em Reconectar.",
+                        "#fff1a6"
+                    );
+
+                    mostrarReconectar(
+                        perfil === "crianca"
+                    );
+                });
+            }
+
+            function recusarTerceiraConexao(
+                novaConexao
+            ) {
+                novaConexao.on("open", () => {
+                    try {
+                        novaConexao.send({
+                            tipo: "ocupado"
+                        });
+                    } finally {
+                        setTimeout(() => {
+                            novaConexao.close();
+                        }, 300);
+                    }
+                });
+            }
+
+            function configurarEventosDoPeer(
+                peerAtual,
+                token
+            ) {
+                peerAtual.on("error", (erro) => {
+                    if (token !== geracao) {
+                        return;
+                    }
+
+                    console.error(
+                        "Erro do PeerJS.",
+                        erro
+                    );
+
+                    const mensagensErro = {
+                        "peer-unavailable":
+                            "Código não encontrado. Confira o código no celular do adulto.",
+
+                        "unavailable-id":
+                            "Este código já está aberto em outra aba. Feche a outra aba ou gere um novo código.",
+
+                        "network":
+                            "Falha de internet. Confira a conexão dos celulares.",
+
+                        "server-error":
+                            "O serviço de conexão está temporariamente indisponível.",
+
+                        "socket-error":
+                            "Não foi possível acessar o serviço de conexão.",
+
+                        "browser-incompatible":
+                            "Este navegador não oferece os recursos necessários."
+                    };
+
+                    atualizarStatus(
+                        "🔴 " +
+                        (
+                            mensagensErro[
+                                erro.type
+                            ] ||
+                            "Não foi possível conectar."
+                        ),
+                        "#ffd4dd"
+                    );
+
+                    if (
+                        perfil === "crianca"
+                    ) {
+                        mostrarReconectar(true);
+                    }
+                });
+
+                peerAtual.on(
+                    "disconnected",
+                    () => {
+                        if (token !== geracao) {
+                            return;
+                        }
+
+                        atualizarStatus(
+                            "🟡 Tentando recuperar a conexão…",
+                            "#fff1a6"
+                        );
+
+                        setTimeout(() => {
+                            if (
+                                token !== geracao ||
+                                peer !== peerAtual
+                            ) {
+                                return;
+                            }
+
+                            try {
+                                peerAtual.reconnect();
+                            } catch (erro) {
+                                console.warn(
+                                    "Reconexão não realizada.",
+                                    erro
+                                );
+                            }
+                        }, 1200);
+                    }
+                );
+            }
+
+            function encerrarRede() {
+                geracao += 1;
+
+                try {
+                    conexao?.close();
+                } catch (erro) {
+                    console.warn(erro);
+                }
+
+                try {
+                    peer?.destroy();
+                } catch (erro) {
+                    console.warn(erro);
+                }
+
+                conexao = null;
+                peer = null;
+                conectado = false;
+                vagaOcupada = false;
+
+                botaoEnviar.disabled = true;
+
+                return geracao;
+            }
+
+            async function prepararDependencias() {
+                atualizarStatus(
+                    "🟡 Preparando o aplicativo…"
+                );
+
+                await garantirPeerJS();
+
+                if (!banco) {
+                    await iniciarArmazenamento();
+                }
+            }
+
+            async function criarSalaAdulto(
+                forcarNovoCodigo = false
+            ) {
+                const botao = $("criar-sala");
+                botao.disabled = true;
+
+                const token = encerrarRede();
+
+                try {
+                    await prepararDependencias();
+
+                    perfil = "adulto";
+
+                    meuNome =
+                        $("nome-adulto").value.trim() ||
+                        "Papai ou Mamãe";
+
+                    localStorage.setItem(
+                        CHAVE_NOME_ADULTO,
+                        meuNome
+                    );
+
+                    let codigo =
+                        localStorage.getItem(
+                            CHAVE_CODIGO_ADULTO
+                        );
+
+                    if (
+                        forcarNovoCodigo ||
+                        limparCodigo(codigo).length !==
+                            12
+                    ) {
+                        codigo = gerarCodigo();
+
+                        localStorage.setItem(
+                            CHAVE_CODIGO_ADULTO,
+                            codigo
+                        );
+                    }
+
+                    codigoSala =
+                        limparCodigo(codigo);
+
+                    $("codigo-exibido").textContent =
+                        formatarCodigo(
+                            codigoSala
+                        );
+
+                    mostrarTela(
+                        "espera-adulto"
+                    );
+
+                    peer = new window.Peer(
+                        idDaSala(codigoSala),
+                        {
+                            debug: 1
+                        }
+                    );
+
+                    configurarEventosDoPeer(
+                        peer,
+                        token
+                    );
+
+                    peer.on("open", () => {
+                        if (
+                            token !== geracao
+                        ) {
+                            return;
+                        }
+
+                        atualizarStatus(
+                            "🟡 Aguardando o segundo celular…",
+                            "#fff1a6"
+                        );
+                    });
+
+                    peer.on(
+                        "connection",
+                        (novaConexao) => {
+                            if (
+                                token !== geracao
+                            ) {
+                                novaConexao.close();
+                                return;
+                            }
+
+                            if (vagaOcupada) {
+                                recusarTerceiraConexao(
+                                    novaConexao
+                                );
+
+                                return;
+                            }
+
+                            configurarConexao(
+                                novaConexao,
+                                token
+                            );
+                        }
+                    );
+                } catch (erro) {
+                    console.error(erro);
+
+                    atualizarStatus(
+                        "🔴 Não foi possível iniciar o aplicativo. Confira sua internet e recarregue a página.",
+                        "#ffd4dd"
+                    );
+                } finally {
+                    botao.disabled = false;
+                }
+            }
+
+            async function entrarComoCrianca() {
+                const codigo =
+                    limparCodigo(
+                        $("codigo-crianca").value
+                    );
+
+                if (codigo.length !== 12) {
+                    atualizarStatus(
+                        "🔴 Digite o código completo com 12 letras e números.",
+                        "#ffd4dd"
+                    );
+
+                    return;
+                }
+
+                const botao = $("entrar-sala");
+                botao.disabled = true;
+
+                const token = encerrarRede();
+
+                try {
+                    await prepararDependencias();
+
+                    perfil = "crianca";
+                    codigoSala = codigo;
+
+                    meuNome =
+                        $("nome-crianca").value.trim() ||
+                        "Minha estrelinha";
+
+                    localStorage.setItem(
+                        CHAVE_NOME_CRIANCA,
+                        meuNome
+                    );
+
+                    localStorage.setItem(
+                        CHAVE_ULTIMO_CODIGO,
+                        codigoSala
+                    );
+
+                    atualizarStatus(
+                        "🟡 Procurando o celular do adulto…"
+                    );
+
+                    peer = new window.Peer(
+                        undefined,
+                        {
+                            debug: 1
+                        }
+                    );
+
+                    configurarEventosDoPeer(
+                        peer,
+                        token
+                    );
+
+                    peer.on("open", () => {
+                        if (
+                            token !== geracao
+                        ) {
+                            return;
+                        }
+
+                        const novaConexao =
+                            peer.connect(
+                                idDaSala(
+                                    codigoSala
+                                ),
+                                {
+                                    reliable: true
+                                }
+                            );
+
+                        configurarConexao(
+                            novaConexao,
+                            token
+                        );
+                    });
+                } catch (erro) {
+                    console.error(erro);
+
+                    atualizarStatus(
+                        "🔴 Não foi possível abrir a conexão. Confira sua internet.",
+                        "#ffd4dd"
+                    );
+
+                    mostrarReconectar(true);
+                } finally {
+                    botao.disabled = false;
+                }
+            }
+
+            async function enviarMensagem(texto) {
+                const mensagemLimpa =
+                    String(texto || "").trim();
+
+                if (!mensagemLimpa) {
+                    return;
+                }
+
+                if (
+                    !conectado ||
+                    !conexao?.open
+                ) {
+                    atualizarStatus(
+                        "🟡 O outro celular ainda não está conectado.",
+                        "#fff1a6"
+                    );
+
+                    return;
+                }
+
+                const mensagem = {
+                    id: gerarIdMensagem(),
+                    sala: codigoSala,
+                    perfil,
+                    nome: meuNome,
+                    texto:
+                        mensagemLimpa.slice(
+                            0,
+                            250
+                        ),
+                    criadoEm: Date.now()
+                };
+
+                await salvarMensagens([
+                    mensagem
+                ]);
+
+                adicionarMensagemNaTela(
+                    mensagem
+                );
+
+                const enviado =
+                    enviarPelaRede({
+                        tipo: "mensagem",
+                        mensagem
+                    });
+
+                if (!enviado) {
+                    atualizarStatus(
+                        "⚠️ A mensagem ficou salva neste celular, mas não foi enviada.",
+                        "#ffe0a8"
+                    );
+                }
+
+                campoTexto.value = "";
+                campoTexto.focus();
+            }
+
+            function reiniciarAplicativo() {
+                encerrarRede();
+
+                perfil = "";
+                meuNome = "";
+                nomeCompanheiro = "";
+                codigoSala = "";
+
+                primeiraMensagemCarregada = null;
+
+                mensagensRenderizadas.clear();
+                listaMensagens.innerHTML = "";
+
+                botaoMaisAntigas.classList.add(
+                    "escondido"
+                );
+
+                mostrarReconectar(false);
+                mostrarTela("inicio");
+
+                atualizarStatus(
+                    "🟡 Escolha este celular"
+                );
+            }
+
+            $("escolher-adulto").addEventListener(
+                "click",
+                () => {
+                    mostrarTela(
+                        "config-adulto"
+                    );
+                }
+            );
+
+            $("escolher-crianca").addEventListener(
+                "click",
+                () => {
+                    mostrarTela(
+                        "config-crianca"
+                    );
+                }
+            );
+
+            document
+                .querySelectorAll(".voltar")
+                .forEach((botao) => {
+                    botao.addEventListener(
+                        "click",
+                        () => {
+                            mostrarTela(
+                                "inicio"
+                            );
+                        }
+                    );
+                });
+
+            document
+                .querySelectorAll(".reiniciar")
+                .forEach((botao) => {
+                    botao.addEventListener(
+                        "click",
+                        reiniciarAplicativo
+                    );
+                });
+
+            $("criar-sala").addEventListener(
+                "click",
+                () => {
+                    void criarSalaAdulto(false);
+                }
+            );
+
+            $("novo-codigo").addEventListener(
+                "click",
+                () => {
+                    void criarSalaAdulto(true);
+                }
+            );
+
+            $("entrar-sala").addEventListener(
+                "click",
+                () => {
+                    void entrarComoCrianca();
+                }
+            );
+
+            $("reconectar").addEventListener(
+                "click",
+                () => {
+                    void entrarComoCrianca();
+                }
+            );
+
+            $("sair").addEventListener(
+                "click",
+                reiniciarAplicativo
+            );
+
+            $("codigo-crianca").addEventListener(
+                "input",
+                (evento) => {
+                    evento.target.value =
+                        formatarCodigo(
+                            evento.target.value
+                        );
+                }
+            );
+
+            $("copiar-codigo").addEventListener(
+                "click",
+                async () => {
+                    const codigo =
+                        formatarCodigo(
+                            codigoSala
+                        );
+
+                    try {
+                        await navigator.clipboard
+                            .writeText(codigo);
+
+                        $("copiar-codigo")
+                            .textContent =
+                            "Código copiado!";
+                    } catch (erro) {
+                        window.prompt(
+                            "Copie o código:",
+                            codigo
+                        );
+                    }
+                }
+            );
+
+            $("compartilhar-codigo")
+                .addEventListener(
+                    "click",
+                    async () => {
+                        const texto =
+                            "Entre no Nosso Cantinho com o código: " +
+                            formatarCodigo(
+                                codigoSala
+                            );
+
+                        try {
+                            if (navigator.share) {
+                                await navigator.share({
+                                    title:
+                                        "Nosso Cantinho Mágico",
+                                    text: texto
+                                });
+                            } else {
+                                window.prompt(
+                                    "Compartilhe esta mensagem:",
+                                    texto
+                                );
+                            }
+                        } catch (erro) {
+                            /*
+                             * O usuário pode cancelar
+                             * o compartilhamento.
+                             */
+                        }
+                    }
+                );
+
+            $("formulario").addEventListener(
+                "submit",
+                (evento) => {
+                    evento.preventDefault();
+
+                    void enviarMensagem(
+                        campoTexto.value
+                    );
+                }
+            );
+
+            $("emojis").addEventListener(
+                "click",
+                (evento) => {
+                    const botao =
+                        evento.target.closest(
+                            "button"
+                        );
+
+                    if (botao) {
+                        void enviarMensagem(
+                            botao.textContent
+                        );
+                    }
+                }
+            );
+
+            botaoMaisAntigas.addEventListener(
+                "click",
+                () => {
+                    void carregarMensagensAntigas();
+                }
+            );
+
+            window.addEventListener(
+                "beforeunload",
+                () => {
+                    try {
+                        conexao?.close();
+                        peer?.destroy();
+                    } catch (erro) {
+                        console.warn(erro);
+                    }
+                }
+            );
+
+            $("nome-adulto").value =
+                localStorage.getItem(
+                    CHAVE_NOME_ADULTO
+                ) ||
+                "Papai ou Mamãe";
+
+            $("nome-crianca").value =
+                localStorage.getItem(
+                    CHAVE_NOME_CRIANCA
+                ) ||
+                "Minha estrelinha";
+
+            $("codigo-crianca").value =
+                formatarCodigo(
+                    localStorage.getItem(
+                        CHAVE_ULTIMO_CODIGO
+                    ) || ""
+                );
+
+            void iniciarArmazenamento();
+        })();
+    </script>
+</body>
+</html>
