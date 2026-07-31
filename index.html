@@ -22,10 +22,16 @@
             --amarelo: #fff1a6;
             --texto: #5d4772;
             --vermelho: #dc5573;
+            --branco: #ffffff;
         }
 
         * {
             box-sizing: border-box;
+        }
+
+        html,
+        body {
+            min-height: 100%;
         }
 
         body {
@@ -54,6 +60,7 @@
 
         button {
             cursor: pointer;
+            touch-action: manipulation;
         }
 
         button:disabled {
@@ -64,11 +71,11 @@
         .app {
             width: min(100%, 560px);
             min-height: 100vh;
-            margin: auto;
+            margin: 0 auto;
             display: flex;
             flex-direction: column;
-            background: rgba(255, 255, 255, 0.95);
             overflow: hidden;
+            background: rgba(255, 255, 255, 0.95);
             box-shadow: 0 0 35px rgba(81, 50, 110, 0.25);
         }
 
@@ -90,8 +97,8 @@
         }
 
         #status {
-            min-height: 39px;
-            padding: 10px;
+            min-height: 41px;
+            padding: 11px;
             font-size: 14px;
             font-weight: bold;
             text-align: center;
@@ -122,6 +129,10 @@
             margin-top: 0;
         }
 
+        .cartao p {
+            line-height: 1.5;
+        }
+
         .escolhas {
             display: grid;
             gap: 14px;
@@ -144,9 +155,15 @@
             background: var(--rosa-claro);
         }
 
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
         input {
             width: 100%;
-            margin: 6px 0 12px;
+            margin: 7px 0 12px;
             padding: 13px;
             color: var(--texto);
             background: white;
@@ -242,6 +259,11 @@
             border-radius: 11px;
         }
 
+        #alternar-som {
+            color: var(--texto);
+            background: white;
+        }
+
         #reconectar {
             color: var(--texto);
             background: var(--amarelo);
@@ -257,6 +279,7 @@
             min-height: 280px;
             padding: 13px;
             overflow-y: auto;
+            overscroll-behavior: contain;
             background:
                 radial-gradient(
                     circle at 20% 20%,
@@ -407,7 +430,9 @@
             <p>Um espaço especial para duas pessoas ✨</p>
         </header>
 
-        <div id="status">🟡 Escolha este celular</div>
+        <div id="status">
+            🟡 Escolha quem usará este celular
+        </div>
 
         <section id="inicio" class="tela">
             <div class="cartao">
@@ -437,7 +462,9 @@
             <div class="cartao">
                 <h2>🦁 Celular do adulto</h2>
 
-                <label for="nome-adulto">Seu nome</label>
+                <label for="nome-adulto">
+                    Seu nome
+                </label>
 
                 <input
                     id="nome-adulto"
@@ -468,11 +495,15 @@
             <div class="cartao">
                 <h2>⭐ Código da criança</h2>
 
-                <p>Digite este código no celular da criança:</p>
+                <p>
+                    Digite este código no celular da criança:
+                </p>
 
                 <div id="codigo-exibido" class="codigo"></div>
 
-                <p>Aguardando o segundo celular entrar…</p>
+                <p>
+                    Mantenha esta página aberta enquanto aguarda.
+                </p>
 
                 <div class="botoes">
                     <button
@@ -513,7 +544,9 @@
             <div class="cartao">
                 <h2>🦄 Celular da criança</h2>
 
-                <label for="nome-crianca">Nome da criança</label>
+                <label for="nome-crianca">
+                    Nome da criança
+                </label>
 
                 <input
                     id="nome-crianca"
@@ -522,7 +555,7 @@
                 >
 
                 <label for="codigo-crianca">
-                    Código do adulto
+                    Código mostrado no celular do adulto
                 </label>
 
                 <input
@@ -561,6 +594,15 @@
 
                     <small id="codigo-mini"></small>
                 </div>
+
+                <button
+                    id="alternar-som"
+                    type="button"
+                    title="Ativar ou desativar sons"
+                    aria-label="Ativar ou desativar sons"
+                >
+                    🔊
+                </button>
 
                 <button
                     id="reconectar"
@@ -620,10 +662,19 @@
         </section>
     </main>
 
+    <script
+        src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"
+        onerror="
+            this.onerror = null;
+            this.src =
+                'https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js';
+        "
+    ></script>
+
     <script>
         "use strict";
 
-        (() => {
+        window.addEventListener("DOMContentLoaded", () => {
             const TELAS = [
                 "inicio",
                 "config-adulto",
@@ -632,62 +683,80 @@
                 "chat"
             ];
 
+            /*
+             * O histórico não tem limite definido pelo aplicativo.
+             * Apenas 100 mensagens são exibidas por página para evitar
+             * travamentos no navegador.
+             */
             const TAMANHO_PAGINA = 100;
-            const QUANTIDADE_SINCRONIZADA = 300;
-            const TAMANHO_LOTE_REDE = 25;
+            const TAMANHO_PAGINA_REDE = 200;
+            const TAMANHO_LOTE_REDE = 40;
+            const MAXIMO_NA_TELA = 500;
 
             const NOME_BANCO = "cantinho-magico-banco-v2";
+            const VERSAO_BANCO = 2;
             const NOME_TABELA = "mensagens";
-            const NOME_INDICE = "sala_criadoEm";
+            const NOME_INDICE = "sala_ordem";
 
             const CHAVE_CODIGO_ADULTO =
-                "cantinho-codigo-adulto-v2";
+                "cantinho-codigo-adulto-v3";
 
             const CHAVE_ULTIMO_CODIGO =
-                "cantinho-ultimo-codigo-v2";
+                "cantinho-ultimo-codigo-v3";
 
             const CHAVE_NOME_ADULTO =
-                "cantinho-nome-adulto-v2";
+                "cantinho-nome-adulto-v3";
 
             const CHAVE_NOME_CRIANCA =
-                "cantinho-nome-crianca-v2";
+                "cantinho-nome-crianca-v3";
+
+            const CHAVE_SOM =
+                "cantinho-som-ativado-v3";
 
             const ALFABETO =
                 "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-            const $ = (id) => document.getElementById(id);
-
-            const status = $("status");
-            const mensagensElemento = $("mensagens");
-            const listaMensagens = $("lista-mensagens");
-            const botaoMaisAntigas = $("mais-antigas");
-            const campoTexto = $("texto");
-            const botaoEnviar = $("botao-enviar");
-            const companheiro = $("companheiro");
-            const codigoMini = $("codigo-mini");
-
-            let banco = null;
-            let peer = null;
-            let conexao = null;
-
-            let perfil = "";
-            let meuNome = "";
-            let nomeCompanheiro = "";
-            let codigoSala = "";
-
-            let conectado = false;
-            let vagaOcupada = false;
-            let primeiraMensagemCarregada = null;
-            let temporizadorAtualizacao = null;
-            let geracao = 0;
+            const estado = {
+                banco: null,
+                peer: null,
+                conexao: null,
+                perfil: "",
+                meuNome: "",
+                nomeCompanheiro: "",
+                codigoSala: "",
+                conectado: false,
+                primeiraOrdem: null,
+                geracao: 0,
+                sincronizando: false
+            };
 
             const mensagensMemoria = new Map();
             const mensagensRenderizadas = new Set();
-            const migracoesRealizadas = new Set();
+            const salasMigradas = new Set();
+
+            let temporizadorAtualizacao = null;
+            let contextoAudio = null;
+
+            let somAtivado =
+                localStorage.getItem(CHAVE_SOM) !== "false";
+
+            const elemento = (id) => {
+                return document.getElementById(id);
+            };
+
+            const status = elemento("status");
+            const mensagensElemento = elemento("mensagens");
+            const listaMensagens = elemento("lista-mensagens");
+            const botaoMaisAntigas = elemento("mais-antigas");
+            const campoTexto = elemento("texto");
+            const botaoEnviar = elemento("botao-enviar");
+            const companheiro = elemento("companheiro");
+            const codigoMini = elemento("codigo-mini");
+            const botaoSom = elemento("alternar-som");
 
             function mostrarTela(id) {
                 TELAS.forEach((tela) => {
-                    $(tela).classList.toggle(
+                    elemento(tela).classList.toggle(
                         "escondido",
                         tela !== id
                     );
@@ -703,10 +772,20 @@
             }
 
             function mostrarReconectar(mostrar) {
-                $("reconectar").classList.toggle(
+                elemento("reconectar").classList.toggle(
                     "escondido",
                     !mostrar
                 );
+            }
+
+            function atualizarBotaoSom() {
+                botaoSom.textContent =
+                    somAtivado ? "🔊" : "🔇";
+
+                botaoSom.title =
+                    somAtivado
+                        ? "Desativar sons"
+                        : "Ativar sons";
             }
 
             function limparCodigo(codigo) {
@@ -758,74 +837,159 @@
                 );
             }
 
+            function criarOrdem(criadoEm, id) {
+                const tempo = String(
+                    Number(criadoEm) || Date.now()
+                ).padStart(13, "0");
+
+                return `${tempo}-${String(id)}`;
+            }
+
             function esperar(milissegundos) {
                 return new Promise((resolve) => {
                     setTimeout(resolve, milissegundos);
                 });
             }
 
-            function carregarScript(endereco) {
-                return new Promise((resolve, reject) => {
-                    const script =
-                        document.createElement("script");
+            /*
+             * Sons
+             */
 
-                    script.src = endereco;
-                    script.async = true;
-
-                    script.onload = resolve;
-
-                    script.onerror = () => {
-                        script.remove();
-
-                        reject(
-                            new Error(
-                                "Falha ao carregar " +
-                                endereco
-                            )
-                        );
-                    };
-
-                    document.head.appendChild(script);
-                });
-            }
-
-            async function garantirPeerJS() {
-                if (window.Peer) {
-                    return;
+            async function obterContextoAudio() {
+                if (!somAtivado) {
+                    return null;
                 }
 
-                const enderecos = [
-                    "https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js",
-                    "https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"
-                ];
+                const AudioContexto =
+                    window.AudioContext ||
+                    window.webkitAudioContext;
 
-                let ultimoErro = null;
+                if (!AudioContexto) {
+                    return null;
+                }
 
-                for (const endereco of enderecos) {
+                if (!contextoAudio) {
+                    contextoAudio = new AudioContexto();
+                }
+
+                if (contextoAudio.state === "suspended") {
                     try {
-                        await carregarScript(endereco);
-
-                        if (window.Peer) {
-                            return;
-                        }
+                        await contextoAudio.resume();
                     } catch (erro) {
-                        ultimoErro = erro;
+                        console.warn(
+                            "O navegador bloqueou o áudio.",
+                            erro
+                        );
+
+                        return null;
                     }
                 }
 
-                throw (
-                    ultimoErro ||
-                    new Error(
-                        "A biblioteca de conexão não abriu."
-                    )
+                return contextoAudio;
+            }
+
+            function tocarNota(
+                contexto,
+                frequencia,
+                atraso,
+                duracao,
+                volume
+            ) {
+                const oscilador = contexto.createOscillator();
+                const ganho = contexto.createGain();
+
+                const inicio =
+                    contexto.currentTime + atraso;
+
+                const fim =
+                    inicio + duracao;
+
+                oscilador.type = "sine";
+
+                oscilador.frequency.setValueAtTime(
+                    frequencia,
+                    inicio
+                );
+
+                ganho.gain.setValueAtTime(
+                    0.0001,
+                    inicio
+                );
+
+                ganho.gain.exponentialRampToValueAtTime(
+                    volume,
+                    inicio + 0.015
+                );
+
+                ganho.gain.exponentialRampToValueAtTime(
+                    0.0001,
+                    fim
+                );
+
+                oscilador.connect(ganho);
+                ganho.connect(contexto.destination);
+
+                oscilador.start(inicio);
+                oscilador.stop(fim);
+            }
+
+            async function tocarSomEnvio() {
+                const contexto =
+                    await obterContextoAudio();
+
+                if (!contexto) {
+                    return;
+                }
+
+                tocarNota(
+                    contexto,
+                    760,
+                    0,
+                    0.09,
+                    0.04
                 );
             }
+
+            async function tocarSomRecebimento() {
+                const contexto =
+                    await obterContextoAudio();
+
+                if (!contexto) {
+                    return;
+                }
+
+                tocarNota(
+                    contexto,
+                    620,
+                    0,
+                    0.10,
+                    0.045
+                );
+
+                tocarNota(
+                    contexto,
+                    840,
+                    0.11,
+                    0.13,
+                    0.045
+                );
+            }
+
+            function prepararAudio() {
+                if (somAtivado) {
+                    void obterContextoAudio();
+                }
+            }
+
+            /*
+             * IndexedDB
+             */
 
             function abrirBanco() {
                 return new Promise((resolve, reject) => {
                     const requisicao = indexedDB.open(
                         NOME_BANCO,
-                        1
+                        VERSAO_BANCO
                     );
 
                     requisicao.onupgradeneeded = () => {
@@ -835,8 +999,9 @@
                         let tabela;
 
                         if (
-                            !bancoAtual.objectStoreNames
-                                .contains(NOME_TABELA)
+                            !bancoAtual.objectStoreNames.contains(
+                                NOME_TABELA
+                            )
                         ) {
                             tabela =
                                 bancoAtual.createObjectStore(
@@ -847,10 +1012,9 @@
                                 );
                         } else {
                             tabela =
-                                requisicao.transaction
-                                    .objectStore(
-                                        NOME_TABELA
-                                    );
+                                requisicao.transaction.objectStore(
+                                    NOME_TABELA
+                                );
                         }
 
                         if (
@@ -860,16 +1024,76 @@
                         ) {
                             tabela.createIndex(
                                 NOME_INDICE,
-                                ["sala", "criadoEm"],
+                                ["sala", "ordem"],
                                 {
                                     unique: false
                                 }
                             );
                         }
+
+                        /*
+                         * Atualiza mensagens salvas por versões antigas.
+                         */
+                        const cursorRequisicao =
+                            tabela.openCursor();
+
+                        cursorRequisicao.onsuccess = () => {
+                            const cursor =
+                                cursorRequisicao.result;
+
+                            if (!cursor) {
+                                return;
+                            }
+
+                            const mensagem =
+                                cursor.value;
+
+                            let alterada = false;
+
+                            if (
+                                !mensagem.sala &&
+                                mensagem.room
+                            ) {
+                                mensagem.sala =
+                                    mensagem.room;
+
+                                alterada = true;
+                            }
+
+                            if (!mensagem.criadoEm) {
+                                mensagem.criadoEm =
+                                    Date.now();
+
+                                alterada = true;
+                            }
+
+                            if (!mensagem.ordem) {
+                                mensagem.ordem =
+                                    criarOrdem(
+                                        mensagem.criadoEm,
+                                        mensagem.id
+                                    );
+
+                                alterada = true;
+                            }
+
+                            if (alterada) {
+                                cursor.update(mensagem);
+                            }
+
+                            cursor.continue();
+                        };
                     };
 
                     requisicao.onsuccess = () => {
-                        resolve(requisicao.result);
+                        const bancoAtual =
+                            requisicao.result;
+
+                        bancoAtual.onversionchange = () => {
+                            bancoAtual.close();
+                        };
+
+                        resolve(bancoAtual);
                     };
 
                     requisicao.onerror = () => {
@@ -893,12 +1117,12 @@
                 }
 
                 try {
-                    banco = await abrirBanco();
+                    estado.banco = await abrirBanco();
                 } catch (erro) {
-                    banco = null;
+                    estado.banco = null;
 
                     console.error(
-                        "Falha ao abrir o IndexedDB.",
+                        "Erro ao abrir o IndexedDB.",
                         erro
                     );
                 }
@@ -907,36 +1131,43 @@
                     await navigator.storage?.persist?.();
                 } catch (erro) {
                     console.warn(
-                        "Persistência não concedida.",
+                        "Persistência de armazenamento não concedida.",
                         erro
                     );
                 }
             }
 
+            async function garantirArmazenamento() {
+                if (!estado.banco) {
+                    await iniciarArmazenamento();
+                }
+            }
+
             async function salvarMensagens(itens) {
-                const unicos = new Map();
+                const unicas = new Map();
 
                 itens.forEach((mensagem) => {
-                    if (mensagem?.id) {
-                        unicos.set(
-                            mensagem.id,
-                            mensagem
-                        );
-
-                        mensagensMemoria.set(
-                            mensagem.id,
-                            mensagem
-                        );
+                    if (!mensagem?.id) {
+                        return;
                     }
+
+                    unicas.set(
+                        mensagem.id,
+                        mensagem
+                    );
+
+                    mensagensMemoria.set(
+                        mensagem.id,
+                        mensagem
+                    );
                 });
 
-                const mensagens = Array.from(
-                    unicos.values()
-                );
+                const mensagens =
+                    Array.from(unicas.values());
 
                 if (
                     mensagens.length === 0 ||
-                    !banco
+                    !estado.banco
                 ) {
                     return;
                 }
@@ -945,7 +1176,7 @@
                     await new Promise(
                         (resolve, reject) => {
                             const transacao =
-                                banco.transaction(
+                                estado.banco.transaction(
                                     NOME_TABELA,
                                     "readwrite"
                                 );
@@ -961,8 +1192,9 @@
                                 }
                             );
 
-                            transacao.oncomplete =
-                                resolve;
+                            transacao.oncomplete = () => {
+                                resolve();
+                            };
 
                             transacao.onabort = () => {
                                 reject(
@@ -971,13 +1203,6 @@
                                         "Gravação cancelada."
                                     )
                                 );
-                            };
-
-                            transacao.onerror = () => {
-                                /*
-                                 * O evento onabort concluirá
-                                 * a rejeição da Promise.
-                                 */
                             };
                         }
                     );
@@ -988,7 +1213,7 @@
                     );
 
                     atualizarStatus(
-                        "⚠️ O navegador não conseguiu salvar o histórico, mas a conversa continua.",
+                        "⚠️ A conversa continua, mas o navegador não conseguiu salvar o histórico.",
                         "#ffe0a8"
                     );
                 }
@@ -1007,12 +1232,14 @@
                             mensagem.sala === sala &&
                             (
                                 antesDe === null ||
-                                mensagem.criadoEm < antesDe
+                                mensagem.ordem < antesDe
                             )
                         );
                     })
                     .sort((a, b) => {
-                        return b.criadoEm - a.criadoEm;
+                        return b.ordem.localeCompare(
+                            a.ordem
+                        );
                     })
                     .slice(0, limite)
                     .reverse();
@@ -1023,7 +1250,7 @@
                 limite,
                 antesDe = null
             ) {
-                if (!banco) {
+                if (!estado.banco) {
                     return buscarNaMemoria(
                         sala,
                         limite,
@@ -1035,7 +1262,7 @@
                     return await new Promise(
                         (resolve, reject) => {
                             const transacao =
-                                banco.transaction(
+                                estado.banco.transaction(
                                     NOME_TABELA,
                                     "readonly"
                                 );
@@ -1052,12 +1279,12 @@
 
                             const limiteSuperior =
                                 antesDe === null
-                                    ? Number.MAX_SAFE_INTEGER
+                                    ? "\uffff"
                                     : antesDe;
 
                             const intervalo =
                                 IDBKeyRange.bound(
-                                    [sala, 0],
+                                    [sala, ""],
                                     [
                                         sala,
                                         limiteSuperior
@@ -1074,41 +1301,38 @@
 
                             const resultado = [];
 
-                            requisicao.onsuccess =
-                                () => {
-                                    const cursor =
-                                        requisicao.result;
+                            requisicao.onsuccess = () => {
+                                const cursor =
+                                    requisicao.result;
 
-                                    if (
-                                        !cursor ||
-                                        resultado.length >=
-                                            limite
-                                    ) {
-                                        resolve(
-                                            resultado.reverse()
-                                        );
-
-                                        return;
-                                    }
-
-                                    resultado.push(
-                                        cursor.value
+                                if (
+                                    !cursor ||
+                                    resultado.length >= limite
+                                ) {
+                                    resolve(
+                                        resultado.reverse()
                                     );
 
-                                    cursor.continue();
-                                };
+                                    return;
+                                }
 
-                            requisicao.onerror =
-                                () => {
-                                    reject(
-                                        requisicao.error
-                                    );
-                                };
+                                resultado.push(
+                                    cursor.value
+                                );
+
+                                cursor.continue();
+                            };
+
+                            requisicao.onerror = () => {
+                                reject(
+                                    requisicao.error
+                                );
+                            };
                         }
                     );
                 } catch (erro) {
                     console.error(
-                        "Erro ao consultar mensagens.",
+                        "Erro ao buscar mensagens.",
                         erro
                     );
 
@@ -1119,6 +1343,10 @@
                     );
                 }
             }
+
+            /*
+             * Mensagens
+             */
 
             function normalizarMensagem(dados) {
                 if (
@@ -1146,51 +1374,48 @@
                     return null;
                 }
 
+                const id = String(
+                    dados.id || gerarIdMensagem()
+                ).slice(0, 120);
+
                 const criadoEm =
                     Number(dados.criadoEm) ||
                     Date.now();
 
                 return {
-                    id: String(
-                        dados.id ||
-                        gerarIdMensagem()
-                    ).slice(0, 120),
-
-                    sala: codigoSala,
-
+                    id,
+                    sala: estado.codigoSala,
                     perfil: dados.perfil,
-
                     nome: String(
                         dados.nome || "Pessoa"
                     ).slice(0, 25),
-
                     texto,
-
-                    criadoEm
+                    criadoEm,
+                    ordem:
+                        dados.ordem ||
+                        criarOrdem(criadoEm, id)
                 };
             }
 
             async function migrarHistoricoAntigo() {
-                const codigo = limparCodigo(
-                    codigoSala
-                );
+                const codigo =
+                    limparCodigo(estado.codigoSala);
 
                 if (
                     !codigo ||
-                    migracoesRealizadas.has(codigo)
+                    salasMigradas.has(codigo) ||
+                    !estado.banco
                 ) {
                     return;
                 }
 
-                migracoesRealizadas.add(codigo);
+                salasMigradas.add(codigo);
 
                 const chaveAntiga =
                     `cantinho-historico-${codigo}`;
 
                 const dadosAntigos =
-                    localStorage.getItem(
-                        chaveAntiga
-                    );
+                    localStorage.getItem(chaveAntiga);
 
                 if (!dadosAntigos) {
                     return;
@@ -1201,6 +1426,10 @@
                         JSON.parse(dadosAntigos);
 
                     if (!Array.isArray(lista)) {
+                        localStorage.removeItem(
+                            chaveAntiga
+                        );
+
                         return;
                     }
 
@@ -1215,8 +1444,12 @@
                     );
                 } catch (erro) {
                     console.warn(
-                        "O histórico antigo não foi importado.",
+                        "O histórico antigo estava corrompido.",
                         erro
+                    );
+
+                    localStorage.removeItem(
+                        chaveAntiga
                     );
                 }
             }
@@ -1235,11 +1468,12 @@
                     document.createElement("time");
 
                 caixa.className =
-                    mensagem.perfil === perfil
+                    mensagem.perfil === estado.perfil
                         ? "mensagem minha"
                         : "mensagem outra";
 
                 caixa.dataset.id = mensagem.id;
+                caixa.dataset.ordem = mensagem.ordem;
 
                 autor.textContent =
                     mensagem.perfil === "adulto"
@@ -1271,7 +1505,15 @@
 
             function mostrarAvisoSemMensagens() {
                 if (
-                    listaMensagens.children.length > 0
+                    listaMensagens.querySelector(
+                        ".mensagem"
+                    )
+                ) {
+                    return;
+                }
+
+                if (
+                    elemento("aviso-sem-mensagens")
                 ) {
                     return;
                 }
@@ -1289,12 +1531,72 @@
             }
 
             function removerAvisoSemMensagens() {
-                $("aviso-sem-mensagens")?.remove();
+                elemento(
+                    "aviso-sem-mensagens"
+                )?.remove();
+            }
+
+            function rolarAteFinal() {
+                mensagensElemento.scrollTop =
+                    mensagensElemento.scrollHeight;
+            }
+
+            function estaPertoDoFinal() {
+                return (
+                    mensagensElemento.scrollHeight -
+                    mensagensElemento.scrollTop -
+                    mensagensElemento.clientHeight <
+                    100
+                );
+            }
+
+            function limitarMensagensNaTela() {
+                const elementos =
+                    listaMensagens.querySelectorAll(
+                        ".mensagem"
+                    );
+
+                if (
+                    elementos.length <=
+                    MAXIMO_NA_TELA
+                ) {
+                    return;
+                }
+
+                const quantidadeRemover =
+                    elementos.length -
+                    MAXIMO_NA_TELA;
+
+                for (
+                    let indice = 0;
+                    indice < quantidadeRemover;
+                    indice += 1
+                ) {
+                    const mensagem = elementos[indice];
+
+                    mensagensRenderizadas.delete(
+                        mensagem.dataset.id
+                    );
+
+                    mensagem.remove();
+                }
+
+                const primeira =
+                    listaMensagens.querySelector(
+                        ".mensagem"
+                    );
+
+                estado.primeiraOrdem =
+                    primeira?.dataset.ordem || null;
+
+                botaoMaisAntigas.classList.remove(
+                    "escondido"
+                );
             }
 
             function adicionarMensagemNaTela(
                 mensagem,
-                rolar = true
+                forcarRolagem = true
             ) {
                 if (
                     mensagensRenderizadas.has(
@@ -1305,10 +1607,7 @@
                 }
 
                 const estavaNoFinal =
-                    mensagensElemento.scrollHeight -
-                    mensagensElemento.scrollTop -
-                    mensagensElemento.clientHeight <
-                    90;
+                    estaPertoDoFinal();
 
                 removerAvisoSemMensagens();
 
@@ -1320,27 +1619,24 @@
                     mensagem.id
                 );
 
+                limitarMensagensNaTela();
+
                 if (
-                    rolar &&
+                    forcarRolagem ||
                     estavaNoFinal
                 ) {
-                    mensagensElemento.scrollTop =
-                        mensagensElemento.scrollHeight;
+                    requestAnimationFrame(
+                        rolarAteFinal
+                    );
                 }
             }
 
             async function carregarPaginaInicial(
-                rolarAoFinal = true
+                rolar = true
             ) {
-                const estavaNoFinal =
-                    mensagensElemento.scrollHeight -
-                    mensagensElemento.scrollTop -
-                    mensagensElemento.clientHeight <
-                    90;
-
                 const mensagens =
                     await buscarMensagens(
-                        codigoSala,
+                        estado.codigoSala,
                         TAMANHO_PAGINA
                     );
 
@@ -1348,6 +1644,11 @@
                 mensagensRenderizadas.clear();
 
                 mensagens.forEach((mensagem) => {
+                    mensagensMemoria.set(
+                        mensagem.id,
+                        mensagem
+                    );
+
                     listaMensagens.appendChild(
                         criarBalao(mensagem)
                     );
@@ -1357,9 +1658,8 @@
                     );
                 });
 
-                primeiraMensagemCarregada =
-                    mensagens[0]?.criadoEm ||
-                    null;
+                estado.primeiraOrdem =
+                    mensagens[0]?.ordem || null;
 
                 botaoMaisAntigas.classList.toggle(
                     "escondido",
@@ -1369,22 +1669,15 @@
 
                 mostrarAvisoSemMensagens();
 
-                if (
-                    rolarAoFinal ||
-                    estavaNoFinal
-                ) {
-                    requestAnimationFrame(() => {
-                        mensagensElemento.scrollTop =
-                            mensagensElemento
-                                .scrollHeight;
-                    });
+                if (rolar) {
+                    requestAnimationFrame(
+                        rolarAteFinal
+                    );
                 }
             }
 
             async function carregarMensagensAntigas() {
-                if (
-                    primeiraMensagemCarregada === null
-                ) {
+                if (!estado.primeiraOrdem) {
                     return;
                 }
 
@@ -1395,9 +1688,9 @@
 
                 const mensagens =
                     await buscarMensagens(
-                        codigoSala,
+                        estado.codigoSala,
                         TAMANHO_PAGINA,
-                        primeiraMensagemCarregada
+                        estado.primeiraOrdem
                     );
 
                 if (mensagens.length === 0) {
@@ -1422,6 +1715,11 @@
                         return;
                     }
 
+                    mensagensMemoria.set(
+                        mensagem.id,
+                        mensagem
+                    );
+
                     fragmento.appendChild(
                         criarBalao(mensagem)
                     );
@@ -1433,8 +1731,8 @@
 
                 listaMensagens.prepend(fragmento);
 
-                primeiraMensagemCarregada =
-                    mensagens[0].criadoEm;
+                estado.primeiraOrdem =
+                    mensagens[0].ordem;
 
                 if (
                     mensagens.length <
@@ -1465,25 +1763,35 @@
                 temporizadorAtualizacao =
                     setTimeout(() => {
                         void carregarPaginaInicial(
-                            false
+                            true
                         );
-                    }, 250);
+                    }, 350);
+            }
+
+            /*
+             * Conexão
+             */
+
+            function bibliotecaDisponivel() {
+                return (
+                    typeof window.Peer === "function"
+                );
             }
 
             function enviarPelaRede(dados) {
                 if (
-                    !conexao ||
-                    !conexao.open
+                    !estado.conexao ||
+                    !estado.conexao.open
                 ) {
                     return false;
                 }
 
                 try {
-                    conexao.send(dados);
+                    estado.conexao.send(dados);
                     return true;
                 } catch (erro) {
                     console.error(
-                        "Erro ao enviar pela conexão.",
+                        "Erro ao enviar dados.",
                         erro
                     );
 
@@ -1491,37 +1799,82 @@
                 }
             }
 
-            async function sincronizarRecentes() {
-                const conexaoAtual = conexao;
-
-                const recentes =
-                    await buscarMensagens(
-                        codigoSala,
-                        QUANTIDADE_SINCRONIZADA
-                    );
-
-                for (
-                    let inicio = 0;
-                    inicio < recentes.length;
-                    inicio += TAMANHO_LOTE_REDE
+            async function enviarHistoricoCompleto() {
+                if (
+                    estado.sincronizando ||
+                    !estado.conexao?.open
                 ) {
-                    if (
-                        conexao !== conexaoAtual ||
-                        !conexaoAtual.open
+                    return;
+                }
+
+                estado.sincronizando = true;
+
+                const conexaoAtual =
+                    estado.conexao;
+
+                let antesDe = null;
+
+                try {
+                    while (
+                        conexaoAtual ===
+                            estado.conexao &&
+                        conexaoAtual.open
                     ) {
-                        return;
+                        const pagina =
+                            await buscarMensagens(
+                                estado.codigoSala,
+                                TAMANHO_PAGINA_REDE,
+                                antesDe
+                            );
+
+                        if (pagina.length === 0) {
+                            break;
+                        }
+
+                        for (
+                            let inicio = 0;
+                            inicio < pagina.length;
+                            inicio += TAMANHO_LOTE_REDE
+                        ) {
+                            if (
+                                conexaoAtual !==
+                                    estado.conexao ||
+                                !conexaoAtual.open
+                            ) {
+                                return;
+                            }
+
+                            conexaoAtual.send({
+                                tipo: "historico",
+                                mensagens: pagina.slice(
+                                    inicio,
+                                    inicio +
+                                        TAMANHO_LOTE_REDE
+                                )
+                            });
+
+                            await esperar(30);
+                        }
+
+                        antesDe =
+                            pagina[0].ordem;
+
+                        if (
+                            pagina.length <
+                            TAMANHO_PAGINA_REDE
+                        ) {
+                            break;
+                        }
+
+                        await esperar(50);
                     }
-
-                    conexaoAtual.send({
-                        tipo: "historico",
-                        mensagens: recentes.slice(
-                            inicio,
-                            inicio +
-                                TAMANHO_LOTE_REDE
-                        )
-                    });
-
-                    await esperar(35);
+                } catch (erro) {
+                    console.warn(
+                        "A sincronização foi interrompida.",
+                        erro
+                    );
+                } finally {
+                    estado.sincronizando = false;
                 }
             }
 
@@ -1534,7 +1887,8 @@
                 }
 
                 if (dados.tipo === "ocupado") {
-                    conectado = false;
+                    estado.conectado = false;
+                    botaoEnviar.disabled = true;
 
                     atualizarStatus(
                         "🔴 Este cantinho já está sendo usado por dois celulares.",
@@ -1542,7 +1896,7 @@
                     );
 
                     mostrarReconectar(false);
-                    conexao?.close();
+                    estado.conexao?.close();
 
                     return;
                 }
@@ -1550,19 +1904,18 @@
                 if (
                     dados.tipo === "apresentacao"
                 ) {
-                    nomeCompanheiro = String(
-                        dados.nome || "Pessoa"
-                    ).slice(0, 25);
+                    estado.nomeCompanheiro =
+                        String(
+                            dados.nome || "Pessoa"
+                        ).slice(0, 25);
 
                     companheiro.textContent =
-                        `💞 Conversando com ${nomeCompanheiro}`;
+                        `💞 Conversando com ${estado.nomeCompanheiro}`;
 
                     return;
                 }
 
-                if (
-                    dados.tipo === "mensagem"
-                ) {
+                if (dados.tipo === "mensagem") {
                     const mensagem =
                         normalizarMensagem(
                             dados.mensagem
@@ -1572,28 +1925,34 @@
                         return;
                     }
 
+                    const jaExistia =
+                        mensagensMemoria.has(
+                            mensagem.id
+                        );
+
                     await salvarMensagens([
                         mensagem
                     ]);
 
                     adicionarMensagemNaTela(
-                        mensagem
+                        mensagem,
+                        true
                     );
+
+                    if (!jaExistia) {
+                        void tocarSomRecebimento();
+                    }
 
                     return;
                 }
 
                 if (
                     dados.tipo === "historico" &&
-                    Array.isArray(
-                        dados.mensagens
-                    )
+                    Array.isArray(dados.mensagens)
                 ) {
                     const mensagens =
                         dados.mensagens
-                            .map(
-                                normalizarMensagem
-                            )
+                            .map(normalizarMensagem)
                             .filter(Boolean);
 
                     await salvarMensagens(
@@ -1605,13 +1964,18 @@
             }
 
             async function quandoConectar(
-                token
+                token,
+                conexaoAtual
             ) {
-                if (token !== geracao) {
+                if (
+                    token !== estado.geracao ||
+                    conexaoAtual !==
+                        estado.conexao
+                ) {
                     return;
                 }
 
-                conectado = true;
+                estado.conectado = true;
 
                 atualizarStatus(
                     "🟢 Os dois celulares estão conectados!",
@@ -1621,44 +1985,56 @@
                 mostrarReconectar(false);
                 botaoEnviar.disabled = false;
 
+                await garantirArmazenamento();
                 await migrarHistoricoAntigo();
-                await carregarPaginaInicial();
+                await carregarPaginaInicial(true);
 
                 mostrarTela("chat");
 
                 codigoMini.textContent =
-                    perfil === "adulto"
-                        ? `Código: ${formatarCodigo(codigoSala)}`
+                    estado.perfil === "adulto"
+                        ? `Código: ${formatarCodigo(
+                            estado.codigoSala
+                        )}`
                         : "Conversa particular";
 
                 enviarPelaRede({
                     tipo: "apresentacao",
-                    nome: meuNome,
-                    perfil
+                    nome: estado.meuNome,
+                    perfil: estado.perfil
                 });
 
-                void sincronizarRecentes();
+                void enviarHistoricoCompleto();
+
+                campoTexto.focus();
             }
 
             function configurarConexao(
                 novaConexao,
                 token
             ) {
-                conexao = novaConexao;
-                vagaOcupada = true;
+                estado.conexao = novaConexao;
+                estado.conectado = false;
 
                 novaConexao.on("open", () => {
-                    void quandoConectar(token);
+                    void quandoConectar(
+                        token,
+                        novaConexao
+                    );
                 });
 
                 novaConexao.on("data", (dados) => {
-                    if (token === geracao) {
+                    if (
+                        token === estado.geracao
+                    ) {
                         void receberDados(dados);
                     }
                 });
 
                 novaConexao.on("error", (erro) => {
-                    if (token !== geracao) {
+                    if (
+                        token !== estado.geracao
+                    ) {
                         return;
                     }
 
@@ -1675,27 +2051,36 @@
 
                 novaConexao.on("close", () => {
                     if (
-                        token !== geracao ||
-                        conexao !== novaConexao
+                        token !== estado.geracao ||
+                        estado.conexao !==
+                            novaConexao
                     ) {
                         return;
                     }
 
-                    conexao = null;
-                    conectado = false;
-                    vagaOcupada = false;
+                    estado.conexao = null;
+                    estado.conectado = false;
+                    estado.sincronizando = false;
+
                     botaoEnviar.disabled = true;
 
-                    atualizarStatus(
-                        perfil === "adulto"
-                            ? "🟡 Aguardando o celular da criança entrar novamente…"
-                            : "🟡 A conexão caiu. Toque em Reconectar.",
-                        "#fff1a6"
-                    );
+                    if (
+                        estado.perfil === "adulto"
+                    ) {
+                        atualizarStatus(
+                            "🟡 Aguardando o celular da criança entrar novamente…",
+                            "#fff1a6"
+                        );
 
-                    mostrarReconectar(
-                        perfil === "crianca"
-                    );
+                        mostrarReconectar(false);
+                    } else {
+                        atualizarStatus(
+                            "🟡 A conexão caiu. Toque em Reconectar.",
+                            "#fff1a6"
+                        );
+
+                        mostrarReconectar(true);
+                    }
                 });
             }
 
@@ -1720,7 +2105,9 @@
                 token
             ) {
                 peerAtual.on("error", (erro) => {
-                    if (token !== geracao) {
+                    if (
+                        token !== estado.geracao
+                    ) {
                         return;
                     }
 
@@ -1746,117 +2133,128 @@
                             "Não foi possível acessar o serviço de conexão.",
 
                         "browser-incompatible":
-                            "Este navegador não oferece os recursos necessários."
+                            "Este navegador não é compatível com o aplicativo."
                     };
 
                     atualizarStatus(
                         "🔴 " +
                         (
-                            mensagensErro[
-                                erro.type
-                            ] ||
+                            mensagensErro[erro.type] ||
                             "Não foi possível conectar."
                         ),
                         "#ffd4dd"
                     );
 
                     if (
-                        perfil === "crianca"
+                        estado.perfil === "crianca"
                     ) {
                         mostrarReconectar(true);
                     }
                 });
 
-                peerAtual.on(
-                    "disconnected",
-                    () => {
-                        if (token !== geracao) {
+                peerAtual.on("disconnected", () => {
+                    if (
+                        token !== estado.geracao
+                    ) {
+                        return;
+                    }
+
+                    atualizarStatus(
+                        "🟡 Tentando recuperar a conexão…",
+                        "#fff1a6"
+                    );
+
+                    setTimeout(() => {
+                        if (
+                            token !== estado.geracao ||
+                            estado.peer !== peerAtual
+                        ) {
                             return;
                         }
 
-                        atualizarStatus(
-                            "🟡 Tentando recuperar a conexão…",
-                            "#fff1a6"
-                        );
-
-                        setTimeout(() => {
-                            if (
-                                token !== geracao ||
-                                peer !== peerAtual
-                            ) {
-                                return;
-                            }
-
-                            try {
-                                peerAtual.reconnect();
-                            } catch (erro) {
-                                console.warn(
-                                    "Reconexão não realizada.",
-                                    erro
-                                );
-                            }
-                        }, 1200);
-                    }
-                );
+                        try {
+                            peerAtual.reconnect();
+                        } catch (erro) {
+                            console.warn(
+                                "Reconexão não realizada.",
+                                erro
+                            );
+                        }
+                    }, 1200);
+                });
             }
 
             function encerrarRede() {
-                geracao += 1;
+                estado.geracao += 1;
 
-                try {
-                    conexao?.close();
-                } catch (erro) {
-                    console.warn(erro);
-                }
+                const conexaoAnterior =
+                    estado.conexao;
 
-                try {
-                    peer?.destroy();
-                } catch (erro) {
-                    console.warn(erro);
-                }
+                const peerAnterior =
+                    estado.peer;
 
-                conexao = null;
-                peer = null;
-                conectado = false;
-                vagaOcupada = false;
+                estado.conexao = null;
+                estado.peer = null;
+                estado.conectado = false;
+                estado.sincronizando = false;
 
                 botaoEnviar.disabled = true;
 
-                return geracao;
+                try {
+                    conexaoAnterior?.close();
+                } catch (erro) {
+                    console.warn(erro);
+                }
+
+                try {
+                    peerAnterior?.destroy();
+                } catch (erro) {
+                    console.warn(erro);
+                }
+
+                return estado.geracao;
             }
 
-            async function prepararDependencias() {
-                atualizarStatus(
-                    "🟡 Preparando o aplicativo…"
-                );
+            async function prepararAplicativo() {
+                prepararAudio();
 
-                await garantirPeerJS();
-
-                if (!banco) {
-                    await iniciarArmazenamento();
+                if (!bibliotecaDisponivel()) {
+                    throw new Error(
+                        "A biblioteca PeerJS não foi carregada."
+                    );
                 }
+
+                await garantirArmazenamento();
             }
 
             async function criarSalaAdulto(
                 forcarNovoCodigo = false
             ) {
-                const botao = $("criar-sala");
+                const botao =
+                    elemento("criar-sala");
+
                 botao.disabled = true;
 
                 const token = encerrarRede();
 
                 try {
-                    await prepararDependencias();
+                    atualizarStatus(
+                        "🟡 Preparando o aplicativo…"
+                    );
 
-                    perfil = "adulto";
+                    await prepararAplicativo();
 
-                    meuNome =
-                        $("nome-adulto").value.trim() ||
+                    estado.perfil = "adulto";
+
+                    estado.meuNome =
+                        elemento(
+                            "nome-adulto"
+                        ).value.trim() ||
                         "Papai ou Mamãe";
 
                     localStorage.setItem(
                         CHAVE_NOME_ADULTO,
-                        meuNome
+                        estado.meuNome
                     );
 
                     let codigo =
@@ -1877,33 +2275,37 @@
                         );
                     }
 
-                    codigoSala =
+                    estado.codigoSala =
                         limparCodigo(codigo);
 
-                    $("codigo-exibido").textContent =
+                    elemento(
+                        "codigo-exibido"
+                    ).textContent =
                         formatarCodigo(
-                            codigoSala
+                            estado.codigoSala
                         );
 
                     mostrarTela(
                         "espera-adulto"
                     );
 
-                    peer = new window.Peer(
-                        idDaSala(codigoSala),
+                    estado.peer = new window.Peer(
+                        idDaSala(
+                            estado.codigoSala
+                        ),
                         {
                             debug: 1
                         }
                     );
 
                     configurarEventosDoPeer(
-                        peer,
+                        estado.peer,
                         token
                     );
 
-                    peer.on("open", () => {
+                    estado.peer.on("open", () => {
                         if (
-                            token !== geracao
+                            token !== estado.geracao
                         ) {
                             return;
                         }
@@ -1914,17 +2316,17 @@
                         );
                     });
 
-                    peer.on(
+                    estado.peer.on(
                         "connection",
                         (novaConexao) => {
                             if (
-                                token !== geracao
+                                token !== estado.geracao
                             ) {
                                 novaConexao.close();
                                 return;
                             }
 
-                            if (vagaOcupada) {
+                            if (estado.conexao) {
                                 recusarTerceiraConexao(
                                     novaConexao
                                 );
@@ -1942,7 +2344,7 @@
                     console.error(erro);
 
                     atualizarStatus(
-                        "🔴 Não foi possível iniciar o aplicativo. Confira sua internet e recarregue a página.",
+                        "🔴 Não foi possível iniciar. Confira a internet e recarregue a página.",
                         "#ffd4dd"
                     );
                 } finally {
@@ -1953,7 +2355,9 @@
             async function entrarComoCrianca() {
                 const codigo =
                     limparCodigo(
-                        $("codigo-crianca").value
+                        elemento(
+                            "codigo-crianca"
+                        ).value
                     );
 
                 if (codigo.length !== 12) {
@@ -1965,58 +2369,67 @@
                     return;
                 }
 
-                const botao = $("entrar-sala");
+                const botao =
+                    elemento("entrar-sala");
+
                 botao.disabled = true;
 
                 const token = encerrarRede();
 
                 try {
-                    await prepararDependencias();
+                    atualizarStatus(
+                        "🟡 Preparando o aplicativo…"
+                    );
 
-                    perfil = "crianca";
-                    codigoSala = codigo;
+                    await prepararAplicativo();
 
-                    meuNome =
-                        $("nome-crianca").value.trim() ||
+                    estado.perfil = "crianca";
+                    estado.codigoSala = codigo;
+
+                    estado.meuNome =
+                        elemento(
+                            "nome-crianca"
+                        ).value.trim() ||
                         "Minha estrelinha";
 
                     localStorage.setItem(
                         CHAVE_NOME_CRIANCA,
-                        meuNome
+                        estado.meuNome
                     );
 
                     localStorage.setItem(
                         CHAVE_ULTIMO_CODIGO,
-                        codigoSala
+                        estado.codigoSala
                     );
 
                     atualizarStatus(
                         "🟡 Procurando o celular do adulto…"
                     );
 
-                    peer = new window.Peer(
-                        undefined,
-                        {
-                            debug: 1
-                        }
-                    );
+                    estado.peer =
+                        new window.Peer(
+                            undefined,
+                            {
+                                debug: 1
+                            }
+                        );
 
                     configurarEventosDoPeer(
-                        peer,
+                        estado.peer,
                         token
                     );
 
-                    peer.on("open", () => {
+                    estado.peer.on("open", () => {
                         if (
-                            token !== geracao
+                            token !== estado.geracao
                         ) {
                             return;
                         }
 
                         const novaConexao =
-                            peer.connect(
+                            estado.peer.connect(
                                 idDaSala(
-                                    codigoSala
+                                    estado.codigoSala
                                 ),
                                 {
                                     reliable: true
@@ -2051,8 +2464,8 @@
                 }
 
                 if (
-                    !conectado ||
-                    !conexao?.open
+                    !estado.conectado ||
+                    !estado.conexao?.open
                 ) {
                     atualizarStatus(
                         "🟡 O outro celular ainda não está conectado.",
@@ -2062,17 +2475,28 @@
                     return;
                 }
 
+                const id =
+                    gerarIdMensagem();
+
+                const criadoEm =
+                    Date.now();
+
                 const mensagem = {
-                    id: gerarIdMensagem(),
-                    sala: codigoSala,
-                    perfil,
-                    nome: meuNome,
+                    id,
+                    sala: estado.codigoSala,
+                    perfil: estado.perfil,
+                    nome: estado.meuNome,
                     texto:
                         mensagemLimpa.slice(
                             0,
                             250
                         ),
-                    criadoEm: Date.now()
+                    criadoEm,
+                    ordem:
+                        criarOrdem(
+                            criadoEm,
+                            id
+                        )
                 };
 
                 await salvarMensagens([
@@ -2080,7 +2504,8 @@
                 ]);
 
                 adicionarMensagemNaTela(
-                    mensagem
+                    mensagem,
+                    true
                 );
 
                 const enviado =
@@ -2089,7 +2514,9 @@
                         mensagem
                     });
 
-                if (!enviado) {
+                if (enviado) {
+                    void tocarSomEnvio();
+                } else {
                     atualizarStatus(
                         "⚠️ A mensagem ficou salva neste celular, mas não foi enviada.",
                         "#ffe0a8"
@@ -2103,12 +2530,11 @@
             function reiniciarAplicativo() {
                 encerrarRede();
 
-                perfil = "";
-                meuNome = "";
-                nomeCompanheiro = "";
-                codigoSala = "";
-
-                primeiraMensagemCarregada = null;
+                estado.perfil = "";
+                estado.meuNome = "";
+                estado.nomeCompanheiro = "";
+                estado.codigoSala = "";
+                estado.primeiraOrdem = null;
 
                 mensagensRenderizadas.clear();
                 listaMensagens.innerHTML = "";
@@ -2121,22 +2547,42 @@
                 mostrarTela("inicio");
 
                 atualizarStatus(
-                    "🟡 Escolha este celular"
+                    "🟡 Escolha quem usará este celular"
                 );
             }
 
-            $("escolher-adulto").addEventListener(
+            /*
+             * Eventos
+             */
+
+            document.addEventListener(
+                "pointerdown",
+                prepararAudio,
+                {
+                    passive: true
+                }
+            );
+
+            elemento(
+                "escolher-adulto"
+            ).addEventListener(
                 "click",
                 () => {
+                    prepararAudio();
+
                     mostrarTela(
                         "config-adulto"
                     );
                 }
             );
 
-            $("escolher-crianca").addEventListener(
+            elemento(
+                "escolher-crianca"
+            ).addEventListener(
                 "click",
                 () => {
+                    prepararAudio();
+
                     mostrarTela(
                         "config-crianca"
                     );
@@ -2165,40 +2611,52 @@
                     );
                 });
 
-            $("criar-sala").addEventListener(
+            elemento(
+                "criar-sala"
+            ).addEventListener(
                 "click",
                 () => {
                     void criarSalaAdulto(false);
                 }
             );
 
-            $("novo-codigo").addEventListener(
+            elemento(
+                "novo-codigo"
+            ).addEventListener(
                 "click",
                 () => {
                     void criarSalaAdulto(true);
                 }
             );
 
-            $("entrar-sala").addEventListener(
+            elemento(
+                "entrar-sala"
+            ).addEventListener(
                 "click",
                 () => {
                     void entrarComoCrianca();
                 }
             );
 
-            $("reconectar").addEventListener(
+            elemento(
+                "reconectar"
+            ).addEventListener(
                 "click",
                 () => {
                     void entrarComoCrianca();
                 }
             );
 
-            $("sair").addEventListener(
+            elemento(
+                "sair"
+            ).addEventListener(
                 "click",
                 reiniciarAplicativo
             );
 
-            $("codigo-crianca").addEventListener(
+            elemento(
+                "codigo-crianca"
+            ).addEventListener(
                 "input",
                 (evento) => {
                     evento.target.value =
@@ -2208,21 +2666,35 @@
                 }
             );
 
-            $("copiar-codigo").addEventListener(
+            elemento(
+                "copiar-codigo"
+            ).addEventListener(
                 "click",
                 async () => {
                     const codigo =
                         formatarCodigo(
-                            codigoSala
+                            estado.codigoSala
                         );
 
                     try {
                         await navigator.clipboard
                             .writeText(codigo);
 
-                        $("copiar-codigo")
-                            .textContent =
+                        const botao =
+                            elemento(
+                                "copiar-codigo"
+                            );
+
+                        const textoAnterior =
+                            botao.textContent;
+
+                        botao.textContent =
                             "Código copiado!";
+
+                        setTimeout(() => {
+                            botao.textContent =
+                                textoAnterior;
+                        }, 1500);
                     } catch (erro) {
                         window.prompt(
                             "Copie o código:",
@@ -2232,39 +2704,41 @@
                 }
             );
 
-            $("compartilhar-codigo")
-                .addEventListener(
-                    "click",
-                    async () => {
-                        const texto =
-                            "Entre no Nosso Cantinho com o código: " +
-                            formatarCodigo(
-                                codigoSala
+            elemento(
+                "compartilhar-codigo"
+            ).addEventListener(
+                "click",
+                async () => {
+                    const texto =
+                        "Entre no Nosso Cantinho com o código: " +
+                        formatarCodigo(
+                            estado.codigoSala
+                        );
+
+                    try {
+                        if (navigator.share) {
+                            await navigator.share({
+                                title:
+                                    "Nosso Cantinho Mágico",
+                                text: texto
+                            });
+                        } else {
+                            window.prompt(
+                                "Compartilhe esta mensagem:",
+                                texto
                             );
-
-                        try {
-                            if (navigator.share) {
-                                await navigator.share({
-                                    title:
-                                        "Nosso Cantinho Mágico",
-                                    text: texto
-                                });
-                            } else {
-                                window.prompt(
-                                    "Compartilhe esta mensagem:",
-                                    texto
-                                );
-                            }
-                        } catch (erro) {
-                            /*
-                             * O usuário pode cancelar
-                             * o compartilhamento.
-                             */
                         }
+                    } catch (erro) {
+                        /*
+                         * O usuário pode cancelar o compartilhamento.
+                         */
                     }
-                );
+                }
+            );
 
-            $("formulario").addEventListener(
+            elemento(
+                "formulario"
+            ).addEventListener(
                 "submit",
                 (evento) => {
                     evento.preventDefault();
@@ -2275,7 +2749,9 @@
                 }
             );
 
-            $("emojis").addEventListener(
+            elemento(
+                "emojis"
+            ).addEventListener(
                 "click",
                 (evento) => {
                     const botao =
@@ -2298,39 +2774,63 @@
                 }
             );
 
+            botaoSom.addEventListener(
+                "click",
+                () => {
+                    somAtivado = !somAtivado;
+
+                    localStorage.setItem(
+                        CHAVE_SOM,
+                        String(somAtivado)
+                    );
+
+                    atualizarBotaoSom();
+
+                    if (somAtivado) {
+                        void tocarSomEnvio();
+                    }
+                }
+            );
+
             window.addEventListener(
                 "beforeunload",
                 () => {
                     try {
-                        conexao?.close();
-                        peer?.destroy();
+                        estado.conexao?.close();
+                        estado.peer?.destroy();
                     } catch (erro) {
                         console.warn(erro);
                     }
                 }
             );
 
-            $("nome-adulto").value =
+            /*
+             * Inicialização
+             */
+
+            elemento("nome-adulto").value =
                 localStorage.getItem(
                     CHAVE_NOME_ADULTO
                 ) ||
                 "Papai ou Mamãe";
 
-            $("nome-crianca").value =
+            elemento("nome-crianca").value =
                 localStorage.getItem(
                     CHAVE_NOME_CRIANCA
                 ) ||
                 "Minha estrelinha";
 
-            $("codigo-crianca").value =
+            elemento("codigo-crianca").value =
                 formatarCodigo(
                     localStorage.getItem(
                         CHAVE_ULTIMO_CODIGO
                     ) || ""
                 );
 
+            atualizarBotaoSom();
+
             void iniciarArmazenamento();
-        })();
+        });
     </script>
 </body>
 </html>
