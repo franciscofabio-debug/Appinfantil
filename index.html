@@ -1,0 +1,42 @@
+function salvarHistorico() {
+    try {
+        localStorage.setItem(
+            chaveHistorico(),
+            JSON.stringify(historico)
+        );
+    } catch (erro) {
+        /*
+         * Mesmo que o armazenamento do navegador fique cheio,
+         * a conversa continua funcionando durante a sessão atual.
+         */
+        console.warn(
+            "Não foi possível salvar todo o histórico no navegador.",
+            erro
+        );
+    }
+}
+
+function juntarHistoricos(novosItens) {
+    if (!Array.isArray(novosItens)) {
+        return;
+    }
+
+    const mapa = new Map();
+
+    [...historico, ...novosItens].forEach((mensagem) => {
+        if (mensagem?.id) {
+            mapa.set(mensagem.id, mensagem);
+        }
+    });
+
+    /*
+     * Não existe mais o slice(-LIMITE_HISTORICO).
+     * Todas as mensagens permanecem no histórico.
+     */
+    historico = Array.from(mapa.values()).sort(
+        (a, b) => a.criadoEm - b.criadoEm
+    );
+
+    salvarHistorico();
+    desenharHistorico();
+}
